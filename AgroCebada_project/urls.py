@@ -17,6 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from django.urls import path, include 
+
+urlpatterns = [
+    # ... urls del bot
+    path('bot/', include('chatbot.urls')), # <-- rutas del bott
+]
 urlpatterns = [
     path('admin/', admin.site.urls),
 ]
