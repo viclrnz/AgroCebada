@@ -23,10 +23,12 @@ logger = logging.getLogger(__name__)
 # (por ejemplo, probar otro modelo con mejor soporte de tool calls).
 MODELO = os.getenv("CHATBOT_MODEL", "zai-org/GLM-4.7-Flash")
 ALIAS_DB_LECTURA = os.getenv("CHATBOT_DB_ALIAS", "default")  # idealmente un alias "readonly" con rol de solo lectura
-MAX_PASOS = 6                # NUEVO: máximo de rondas de herramientas (explorar -> consultar -> responder), evita bucles infinitos
+MAX_PASOS = 8                # NUEVO: máximo de rondas de herramientas (explorar -> consultar -> responder), evita bucles infinitos
+                             # MODIFICADO (v3): 6 -> 8 para dar margen a un reintento tras un error de SQL
 MAX_FILAS = 100              # NUEVO: límite de filas por consulta, protege memoria y tokens
 MAX_CHARS_RESULTADO = 12000  # NUEVO: recorta resultados enormes antes de mandarlos al modelo
 TIMEOUT_SQL_MS = 10000       # NUEVO: ninguna consulta de la IA puede tardar más de 10 s
+MAX_HISTORIAL = 20           # NUEVO (v4): solo los últimos 20 mensajes de la sesión se envían al modelo (controla costo y tokens)
 
 PROMPT_SISTEMA = """Eres un ingeniero agrónomo y asistente de ciencia de datos para el proyecto AgroCebada. 
 Tu objetivo es ayudar a analizar datos de parcelas de cebada en Hidalgo, Puebla y Tlaxcala.
@@ -42,7 +44,13 @@ REGLAS CRÍTICAS PARA TUS HERRAMIENTAS:
 6. El argumento de 'ejecutar_consulta_select' se llama exactamente 'query_sql'.
 7. NUNCA sumes ni restes números tú mismo. Los totales y subtotales deben venir calculados por SQL (COUNT, SUM, GROUP BY ROLLUP). Cita el total exactamente como lo devuelve la herramienta.
 8. Para preguntas de cuántas parcelas hay o dónde están, usa 'resumen_parcelas'.
-PISTA DE ESQUEMA: la vista 'v_parcelas_app' tiene, entre otras, las columnas municipio, estado, conjunto, area_ha_geod y rendimiento_t_ha.
+9. Si una consulta devuelve 0 registros o un error, corrígela (revisa mayúsculas/minúsculas y nombres de columnas) y vuelve a intentar UNA vez; después responde con lo que tengas.
+10. Cuando ya tengas los datos necesarios, responde al usuario sin llamar más herramientas.
+PISTA DE ESQUEMA: los datos del proyecto están en solo dos objetos:
+- 'v_parcelas_app': municipio, estado, conjunto, area_ha_geod, rendimiento_t_ha.
+- 'matriz_caracteristicas': estado, municipio, area_ha_geod, elev_media_m, pend_media_grados, pl_ndvi_pico, clima_pixel_id, id_poligono.
+Las demás tablas (auth_*, django_*, chatbot_*, etl_*) son internas: NUNCA las consultes.
+VALORES: los estados se guardan con inicial mayúscula: 'Hidalgo', 'Puebla', 'Tlaxcala'. Para filtrar texto usa ILIKE o LOWER(columna); nunca asumas mayúsculas (por ejemplo 'PUEBLA' no existe).
 MODOS DE RESPUESTA:
 - Si la pregunta requiere datos de AgroCebada (conteos, rendimientos, índices, ubicaciones), usa tus herramientas y cita solo cifras devueltas por ellas.
 - Si la pregunta es conceptual (qué es el NDVI, qué significa rendimiento en t/ha, cómo se interpreta un resultado, qué es un polígono o un conjunto de datos), responde directamente con tu conocimiento agronómico y estadístico, sin consultar la base de datos.
@@ -56,11 +64,19 @@ GLOSARIO DEL PROYECTO:
 - rendimiento_t_ha: rendimiento del cultivo en toneladas por hectárea.
 - conjunto: grupo de datos al que pertenece la parcela (por ejemplo, entrenamiento o validación).
 - NDVI / EVI: índices de vegetación calculados con imágenes satelitales; valores más altos indican vegetación más vigorosa."""
+# NUEVO (v4): se integraron al archivo los bloques MODOS DE RESPUESTA y GLOSARIO que ya habías agregado a mano en tu
+# repo, para que al reemplazar services.py no se pierdan. VERIFICA la definición de 'conjunto': fue una suposición
+# mía a partir del nombre de la columna; corrígela con lo que realmente significa en tu proyecto.
 # NUEVO (reglas 4 a 6 y pista de esquema): el modelo inventó cifras y usó el argumento "sql" en vez de "query_sql".
 # Dar el esquema en el prompt evita llamar a explorar_estructura_db (devuelve TODAS las columnas y gasta muchos tokens).
 # NUEVO (v2, reglas 7 y 8 y mención de 'resumen_parcelas' en la regla 1): el modelo sumó mal (207 en vez de 197).
 # Los LLM fallan con la aritmética, así que se le prohíbe sumar y se le dirige a una herramienta que ya trae el total.
-# Verifica que las columnas de la pista coincidan con tu BD.
+# NUEVO (v3, reglas 9 y 10, PISTA DE ESQUEMA y VALORES): en la prueba de Puebla el modelo filtró por 'PUEBLA' y
+# 'pu' (en la BD el valor es 'Puebla'), obtuvo 0 registros, consultó tablas internas y agotó los pasos sin responder.
+# Ahora conoce las dos únicas tablas útiles, la forma exacta de los valores y cuándo detenerse.
+# IMPORTANTE: verifica que las columnas de la pista coincidan con tu BD. Las de v_parcelas_app y
+# area_ha_geod/estado/municipio de matriz_caracteristicas ya se vieron funcionar en tus pruebas; revisa
+# pl_ndvi_pico, clima_pixel_id e id_poligono (salieron en consultas del modelo que fallaron antes de ejecutarse).
 
 
 def obtener_cliente_ia():
@@ -102,7 +118,10 @@ def ejecutar_sql_lectura(query, params=None):
                 cursor.execute("SET TRANSACTION READ ONLY")
                 # NUEVO: timeout local a la transacción, evita consultas pesadas que bloqueen la app.
                 cursor.execute(f"SET LOCAL statement_timeout = {int(TIMEOUT_SQL_MS)}")
-                cursor.execute(query_limpio, params or [])
+                # MODIFICADO (v3): antes era "params or []". Pasar una lista vacía hace que Django/psycopg trate
+                # cada '%' del SQL como un marcador de parámetro y falle con "only '%s', '%b', '%t' are allowed".
+                # Eso rompía TODOS los LIKE/ILIKE ('Pue%'). Con params=None el SQL se envía tal cual y '%' es literal.
+                cursor.execute(query_limpio, params)
                 columns = [col[0] for col in cursor.description]
                 filas = cursor.fetchmany(MAX_FILAS)  # MODIFICADO: fetchmany en lugar de fetchall (límite de filas)
 
@@ -126,8 +145,12 @@ def explorar_estructura_db():
         SELECT table_name, column_name, data_type 
         FROM information_schema.columns 
         WHERE table_schema = 'public'
+          AND table_name IN ('v_parcelas_app', 'matriz_caracteristicas')
         ORDER BY table_name, ordinal_position
     """  # MODIFICADO: se quitó el ';' final; el validador rechaza cualquier ';'
+    # MODIFICADO (v3): antes devolvía TODAS las tablas (auth_*, django_*, ...) ordenadas alfabéticamente. Con el
+    # tope de 12,000 caracteres, las columnas de 'matriz_caracteristicas' quedaban cortadas y el modelo nunca
+    # veía el esquema real. Ahora solo devuelve las dos tablas del proyecto, y además no expone tablas internas.
     return ejecutar_sql_lectura(query)
 
 
@@ -250,8 +273,15 @@ def ejecutar_herramienta(nombre, args):
 # ==========================================
 def procesar_mensaje(sesion, texto_usuario, idioma, accion="chat"):
     if accion == "undo":
-        mensajes = sesion.mensajes.order_by('-creado')[:2]
-        for m in mensajes: m.delete()
+        # MODIFICADO (v4): antes borraba siempre los 2 últimos mensajes. Desde que el mensaje de fallo ya no se
+        # guarda (v3), un turno fallido deja solo el mensaje del usuario, y "borrar 2" se llevaba además la
+        # respuesta del turno anterior. Ahora se borra la última respuesta (si existe) y luego el último mensaje del usuario.
+        ultimo = sesion.mensajes.order_by('-creado', '-id').first()
+        if ultimo and ultimo.role == "assistant":
+            ultimo.delete()
+            ultimo = sesion.mensajes.order_by('-creado', '-id').first()
+        if ultimo and ultimo.role == "user":
+            ultimo.delete()
         return "undo_ok"
 
     elif accion == "reroll":
@@ -268,7 +298,11 @@ def procesar_mensaje(sesion, texto_usuario, idioma, accion="chat"):
         prompt_dinamico += "\n<rule>CRITICO: Debes responder SIEMPRE en Español.</rule>"
 
     historial = [{"role": "system", "content": prompt_dinamico}]
-    for msg in sesion.mensajes.order_by('creado'):
+    # MODIFICADO (v4): antes se enviaba TODO el historial. En sesiones largas el costo y la latencia crecen sin límite
+    # y el modelo se confunde con contexto viejo. Ahora se toman los últimos MAX_HISTORIAL mensajes en orden cronológico.
+    recientes = list(sesion.mensajes.order_by('-creado', '-id')[:MAX_HISTORIAL])
+    recientes.reverse()
+    for msg in recientes:
         historial.append({"role": msg.role, "content": msg.content})
 
     client = obtener_cliente_ia()
@@ -332,8 +366,31 @@ def procesar_mensaje(sesion, texto_usuario, idioma, accion="chat"):
                 "content": resultado,
             })
 
-    # NUEVO: si se agotaron los pasos sin respuesta, damos un mensaje seguro en vez de dejar texto_final vacío.
+    es_fallo = False  # NUEVO (v3): marca si tuvimos que usar el mensaje de error genérico
+
+    # NUEVO (v3): si se agotaron los pasos sin respuesta, hacemos UNA última llamada con tool_choice="none" para
+    # forzar al modelo a resumir lo que sí encontró, en lugar de rendirnos con un mensaje genérico.
     if not texto_final:
+        try:
+            historial.append({
+                "role": "user",
+                "content": "Con la información obtenida hasta ahora, responde de la mejor forma posible. "
+                           "Si no obtuviste datos, dilo claramente y no inventes cifras. No uses herramientas.",
+            })
+            resp = client.chat.completions.create(
+                model=MODELO,
+                messages=historial,
+                tools=herramientas_ia,
+                tool_choice="none",
+                temperature=0,
+            )
+            texto_final = limpiar_xml(resp.choices[0].message.content or "")
+        except Exception as e:
+            logger.warning("Fallo la respuesta final forzada: %s", e)
+
+    # NUEVO: si aun así no hay respuesta, damos un mensaje seguro en vez de dejar texto_final vacío.
+    if not texto_final:
+        es_fallo = True
         texto_final = ("I couldn't complete the query. Please try rephrasing your question."
                        if idioma == 'en'
                        else "No pude completar la consulta. Intenta reformular tu pregunta.")
@@ -341,6 +398,9 @@ def procesar_mensaje(sesion, texto_usuario, idioma, accion="chat"):
     # GUARDADO FINAL DEL HISTORIAL
     # MODIFICADO (importante): solo se guarda el texto final limpio. Antes se guardaba la respuesta con XML crudo,
     # y en el siguiente turno el modelo creía que ya había consultado y terminaba inventando datos.
-    Mensaje.objects.create(sesion=sesion, role="assistant", content=texto_final)
+    # MODIFICADO (v3): el mensaje de fallo NO se guarda. Si se guardara, en el siguiente turno el modelo vería
+    # en el historial que "ya falló" y tendería a rendirse de nuevo.
+    if not es_fallo:
+        Mensaje.objects.create(sesion=sesion, role="assistant", content=texto_final)
 
     return texto_final
