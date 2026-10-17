@@ -1,11 +1,16 @@
-
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import MapaParcelas from './pages/MapaParcelas'
+import Parcelas from './pages/Parcelas'
+import DetalleParcela from './pages/DetalleParcela'
+import Prediccion from './pages/Prediccion'
+import Chatbot from './Chatbot'
 import './App.css'
 
 const navigation = [
-  { label: 'Dashboard', icon: '▦', active: true },
-  { label: 'Mapa de parcelas', icon: '⌖', active: false },
-  { label: 'Parcelas', icon: '▤', active: false },
-  { label: 'Análisis del modelo', icon: '⌁', active: false },
+  { label: 'Dashboard', icon: '▦', path: '/', active: false },
+  { label: 'Mapa de parcelas', icon: '⌖', path: '/mapa', active: false },
+  { label: 'Parcelas', icon: '▤', path: '/parcelas', active: false },
+  { label: 'Análisis del modelo', icon: '⌁', path: '/analisis', active: false },
 ]
 
 const parcels = [
@@ -15,31 +20,36 @@ const parcels = [
 ]
 
 function App() {
+  const location = useLocation()
+  const navigate = useNavigate()
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">A</div>
-          <div>
-            <strong>AgroCebada</strong>
-            <span>SocieData</span>
-          </div>
+          <img src="/LogoSocieData.svg" alt="Logo de SocieData" />
         </div>
 
         <div className="sidebar-label">MENÚ PRINCIPAL</div>
 
         <nav className="navigation">
           {navigation.map((item) => (
-            <a
-              href="#"
+            <NavLink
+              to={item.path}
               key={item.label}
-              className={`nav-item ${item.active ? 'active' : ''}`}
-              onClick={(event) => event.preventDefault()}
+              end={item.path === '/'}
+              className={({ isActive }) =>
+                `nav-item ${isActive ? 'active' : ''}`
+              }
             >
-              <span className="nav-icon">{item.icon}</span>
-              <span>{item.label}</span>
-              {item.active && <span className="active-dot" />}
-            </a>
+              {({ isActive }) => (
+                <>
+                  <span className="nav-icon">{item.icon}</span>
+                  <span>{item.label}</span>
+                  {isActive && <span className="active-dot" />}
+                </>
+              )}
+            </NavLink>
           ))}
         </nav>
 
@@ -63,6 +73,16 @@ function App() {
             </div>
           </div>
         </header>
+
+        {location.pathname.startsWith('/prediccion/') ? (
+          <Prediccion />
+        ) : /^\/parcelas\/[^/]+\/?$/.test(location.pathname) ? (
+          <DetalleParcela />
+        ) : location.pathname === '/mapa' ? (
+          <MapaParcelas />
+        ) : location.pathname === '/parcelas' ? (
+          <Parcelas />
+        ) : (
 
         <div className="page-content">
           <section className="page-heading">
@@ -113,7 +133,12 @@ function App() {
                   <h2>Mapa de parcelas</h2>
                   <p>Distribución geográfica de las parcelas.</p>
                 </div>
-                <button className="text-button">Explorar mapa ↗</button>
+                <button
+                  className="text-button"
+                  onClick={() => navigate('/mapa')}
+                >
+                  Explorar mapa ↗
+                </button>
               </div>
               <div className="map-placeholder">
                 <div className="map-grid" />
@@ -168,7 +193,12 @@ function App() {
                 <h2>Parcelas recientes</h2>
                 <p>Vista rápida de parcelas del conjunto de datos.</p>
               </div>
-              <button className="text-button">Ver todas →</button>
+              <button
+                className="text-button"
+                onClick={() => navigate('/parcelas')}
+              >
+                Ver todas →
+              </button>
             </div>
 
             <div className="table-scroll">
@@ -209,7 +239,10 @@ function App() {
             <span>Plataforma de análisis de rendimiento agrícola</span>
           </footer>
         </div>
+        )}
       </main>
+      
+      <Chatbot />
     </div>
   )
 }

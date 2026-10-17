@@ -40,15 +40,34 @@
 }
 
 .brand-mark {
-  width: 39px;
-  height: 39px;
-  display: grid;
-  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   border-radius: 12px;
   background: #dfe4d4;
-  color: var(--olive-dark);
-  font-size: 22px;
-  font-weight: 800;
+}
+
+.brand-mark img {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+}
+
+.brand img {
+  width: 100%;
+  max-width: 180px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  flex-shrink: 0;
 }
 
 .brand strong,
@@ -791,4 +810,5 @@ tbody tr:last-child td {
   .page-footer {
     flex-direction: column;
   }
+
 }
