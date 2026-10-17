@@ -1,0 +1,471 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroCebada AI</title>
+    <style>
+        /* --- PALETA DE COLORES AGROCEBADA --- */
+        body {
+            background-color: #f7f6f2; /* Beige claro del fondo del dashboard */
+            color: #2b3024; /* Texto oscuro principal */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .chat-container {
+            background-color: #ffffff; /* Cajas blancas como en el dashboard */
+            width: 90%;
+            max-width: 900px;
+            height: 70vh;
+            margin-top: 5px;
+            border: 1px solid #e4e3dc;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+            overflow-x: hidden; /* Evita scroll horizontal en el contenedor general */
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 18px;
+            border-radius: 8px;
+            max-width: 75%;
+            min-width: 0; /* CRÍTICO en Flexbox para evitar que bloques largos estiren la burbuja */
+            line-height: 1.5;
+            box-sizing: border-box;
+            overflow-wrap: anywhere; /* Corta cualquier línea o cadena sin espacios */
+            word-break: break-word;
+        }
+        .user-msg {
+            background-color: #3f4e35; /* Verde olivo oscuro */
+            align-self: flex-end;
+            color: white;
+        }
+        .ai-msg {
+            background-color: #f2f4ec; /* Verde salvia/beige muy claro */
+            align-self: flex-start;
+            border: 1px solid #e5e8db;
+            color: #2b3024;
+        }
+        .ai-msg strong {
+            color: #3f4e35;
+        }
+
+        /* Contenedor interno de la respuesta de la IA */
+        .ai-content {
+            max-width: 100%;
+            min-width: 0;
+            overflow-x: auto;
+        }
+
+        /* Bloques de código generados por Marked.js */
+        .ai-msg pre {
+            background-color: #2b3024; /* Fondo verde/carbón oscuro estilo terminal */
+            color: #f7f6f2;
+            padding: 12px 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            white-space: pre-wrap; /* Fuerza salto de renglón en código largo */
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            max-width: 100%;
+            box-sizing: border-box;
+            margin: 10px 0;
+            font-size: 13.5px;
+        }
+
+        /* Código en línea */
+        .ai-msg code {
+            font-family: 'Consolas', 'Courier New', monospace;
+            background-color: #e5e8db;
+            color: #2b3024;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            overflow-wrap: anywhere;
+        }
+
+        /* Evita que el código dentro de un bloque <pre> tenga doble fondo */
+        .ai-msg pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+
+        /* Estilo limpio tipo Dashboard para tablas de datos */
+        .ai-msg table {
+            width: 100%;
+            max-width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 14px;
+            display: block;
+            overflow-x: auto;
+        }
+        .ai-msg th, .ai-msg td {
+            border: 1px solid #d4d3cc;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .ai-msg th {
+            background-color: #e5e8db;
+            color: #2b3024;
+            font-weight: 600;
+        }
+        .ai-msg tr:nth-child(even) {
+            background-color: #fafbf8;
+        }
+
+        .input-area {
+            display: flex;
+            width: 90%;
+            max-width: 900px;
+            margin-top: 15px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 15px;
+            background-color: #ffffff;
+            color: #2b3024;
+            border: 1px solid #d4d3cc;
+            border-radius: 10px 0 0 10px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus {
+            border-color: #3f4e35;
+        }
+        input[type="text"]:disabled, button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        button {
+            padding: 15px 30px;
+            background-color: #3f4e35;
+            color: white;
+            border: none;
+            border-radius: 0 10px 10px 0;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover:not(:disabled) {
+            background-color: #536647;
+        }
+        
+        /* Ajustes de Markdown en la burbuja */
+        .ai-msg p { margin: 5px 0 0 0; }
+        .ai-msg ul, .ai-msg ol {
+            margin-top: 5px; margin-bottom: 5px; padding-left: 20px;
+        }
+        
+        /* Estilos para los botones de la barra de herramientas (Edit/Reload) */
+        .toolbar-btn {
+            background-color: #ffffff;
+            color: #3f4e35;
+            border: 1px solid #d4d3cc;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .toolbar-btn:hover:not(:disabled) {
+            background-color: #f2f4ec;
+            border-color: #3f4e35;
+        }
+
+        /* Contenedor de encabezado de la burbuja de la IA */
+        .ai-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+        /* Botón discreto para copiar dentro de cada respuesta */
+        .copy-btn {
+            background-color: #ffffff;
+            color: #3f4e35;
+            border: 1px solid #d4d3cc;
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-size: 12px;
+            font-weight: normal;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+        .copy-btn:hover:not(:disabled) {
+            background-color: #3f4e35;
+            color: #ffffff;
+            border-color: #3f4e35;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Pantalla de Bienvenida (Selector de Idiomas) -->
+    <div id="welcomeScreen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%;">
+        <div style="display: flex; align-items: center; margin-bottom: 30px;">
+            <img src="{% static 'chatbot/sinox.png' %}" alt="Mascota Sinox" style="width: 80px; height: 80px; margin-right: 15px;">
+            <h1 style="color: #2b3024; margin: 0; font-size: 36px;">AgroCebada AI</h1>
+        </div>
+        <h2 style="color: #536647; margin-bottom: 40px;">Select your language / Seleccione su idioma</h2>
+        <div>
+            <button onclick="startChat('es')" style="margin: 10px; width: 200px; border-radius: 10px;">Español</button>
+            <button onclick="startChat('en')" style="margin: 10px; width: 200px; border-radius: 10px;">English</button>
+        </div>
+    </div>
+
+    <!-- Interfaz de Chat (Oculta por defecto) -->
+    <div id="chatUI" style="display: none; flex-direction: column; align-items: center; width: 100%;">
+        <div style="display: flex; align-items: center; margin-top: 20px;">
+            <img id="mascotImage" src="{% static 'chatbot/sinox.png' %}" alt="Mascota Sinox" style="width: 60px; height: 60px; margin-right: 15px;">
+            <h1 style="color: #2b3024; margin: 0;">AgroCebada AI</h1>
+        </div>
+
+        <!-- Barra de herramientas (Edit y Reroll) -->
+        <div style="display: flex; justify-content: flex-end; width: 90%; max-width: 900px; margin-top: 15px; margin-bottom: 5px;">
+            <button class="toolbar-btn" onclick="editLastMessage()" style="margin-right: 10px;">✏️ Edit</button>
+            <button class="toolbar-btn" onclick="rerollMessage()">♻️ Reload</button>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+            <!-- El saludo se inyectará aquí con JavaScript -->
+        </div>
+
+        <div class="input-area">
+            {% csrf_token %}
+            <input type="text" id="userInput" placeholder="Escribe tu mensaje aquí..." onkeypress="handleKeyPress(event)">
+            <button id="sendBtn" onclick="sendMessage()">Send!</button>
+        </div>
+    </div>
+
+    <!-- Librería para renderizar Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        const sessionId = Date.now();
+        let selectedLanguage = 'es'; 
+        let userMessageHistory = []; // Almacena el texto del usuario para poder editarlo
+        
+        // Guardamos las rutas estáticas de Django para las animaciones de la IA
+        const imgSinoxPasiva = "{% static 'chatbot/sinox.png' %}";
+        const imgSinoxActiva = "{% static 'chatbot/sinox1.png' %}";
+        
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const chatUI = document.getElementById('chatUI');
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const mascotImage = document.getElementById('mascotImage');
+
+        // Inicia el chat inyectando el idioma correcto
+        function startChat(lang) {
+            selectedLanguage = lang;
+            welcomeScreen.style.display = 'none';
+            chatUI.style.display = 'flex';
+
+            const greeting = lang === 'es' 
+                ? 'Hola, soy tu asistente técnico de AgroCebada. ¿En qué te puedo ayudar hoy?' 
+                : 'Hello, I am your AgroCebada technical assistant. How can I help you today?';
+            
+            chatContainer.innerHTML = `
+                <div class="message ai-msg">
+                    <strong>AgroCebada AI:</strong><br>${greeting}
+                </div>
+            `;
+            userInput.placeholder = lang === 'es' ? 'Escribe tu mensaje aquí...' : 'Type your message here...';
+        }
+
+        // Sanitización para prevenir inyección de código por parte del usuario
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // Dibuja el mensaje en la pantalla (con botón de copiar para la IA)
+        function appendMessage(sender, text, isUser) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message ' + (isUser ? 'user-msg' : 'ai-msg');
+            
+            if (isUser) {
+                let safeText = escapeHTML(text).replace(/\n/g, '<br>');
+                msgDiv.innerHTML = `<strong>${sender}:</strong><br>${safeText}`;
+            } else {
+                let renderedText = marked.parse(text);
+                const copyLabel = selectedLanguage === 'es' ? '📋 Copiar' : '📋 Copy';
+                
+                msgDiv.innerHTML = `
+                    <div class="ai-header">
+                        <strong>${sender}:</strong>
+                        <button class="copy-btn" onclick="copyMessageText(this)">${copyLabel}</button>
+                    </div>
+                    <div class="ai-content">${renderedText}</div>
+                `;
+            }
+            
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+        }
+
+        // Copia el contenido limpio de la respuesta de la IA al portapapeles
+        async function copyMessageText(btnElement) {
+            const contentDiv = btnElement.parentElement.nextElementSibling;
+            const textToCopy = contentDiv.innerText.trim(); // Extrae el texto limpio sin etiquetas HTML
+
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                const originalText = btnElement.innerHTML;
+                btnElement.innerHTML = selectedLanguage === 'es' ? '✅ ¡Copiado!' : '✅ Copied!';
+                
+                setTimeout(() => {
+                    btnElement.innerHTML = originalText;
+                }, 2000);
+            } catch (err) {
+                // Respaldo por si el navegador bloquea clipboard API
+                const textarea = document.createElement('textarea');
+                textarea.value = textToCopy;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                
+                const originalText = btnElement.innerHTML;
+                btnElement.innerHTML = selectedLanguage === 'es' ? '✅ ¡Copiado!' : '✅ Copied!';
+                setTimeout(() => {
+                    btnElement.innerHTML = originalText;
+                }, 2000);
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !userInput.disabled) {
+                sendMessage();
+            }
+        }
+
+        // Función Editar: Borra la última interacción de la pantalla y de la base de datos
+        async function editLastMessage() {
+            if (userMessageHistory.length === 0 || userInput.disabled) return;
+            
+            userInput.value = userMessageHistory.pop();
+            const userNodes = document.querySelectorAll('.user-msg');
+            const aiNodes = document.querySelectorAll('.ai-msg');
+            
+            if (userNodes.length > 0) userNodes[userNodes.length - 1].remove();
+            if (aiNodes.length > 1) aiNodes[aiNodes.length - 1].remove(); 
+            
+            await fetch('/api/chat/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ sesion_id: sessionId, accion: 'undo' })
+            });
+            userInput.focus();
+        }
+
+        // Función Reload: Borra solo la última respuesta de la IA y le pide otra nueva
+        async function rerollMessage() {
+            if (userMessageHistory.length === 0 || userInput.disabled) return;
+            
+            const aiNodes = document.querySelectorAll('.ai-msg');
+            if (aiNodes.length > 1) aiNodes[aiNodes.length - 1].remove();
+
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+            mascotImage.src = imgSinoxActiva; // Animación de IA pensando
+
+            const typingText = selectedLanguage === 'es' ? 'Regenerando respuesta...' : 'Regenerating response...';
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message ai-msg';
+            loadingDiv.id = 'loadingMsg';
+            loadingDiv.innerHTML = `<strong>AgroCebada AI:</strong><br><em>${typingText}</em>`;
+            chatContainer.appendChild(loadingDiv);
+            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+
+            try {
+                const response = await fetch('/api/chat/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ sesion_id: sessionId, language: selectedLanguage, accion: 'reroll' })
+                });
+                const data = await response.json();
+                document.getElementById('loadingMsg').remove();
+                
+                if (data.status === 'success') {
+                    appendMessage('AgroCebada AI', data.respuesta, false);
+                }
+            } catch (error) {
+                document.getElementById('loadingMsg').remove();
+                appendMessage('System', 'Error al regenerar el mensaje.', false);
+            } finally {
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                mascotImage.src = imgSinoxPasiva; // IA vuelve a estado pasivo
+            }
+        }
+
+        // Función Principal: Envía el mensaje del usuario
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            userMessageHistory.push(text);
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+            mascotImage.src = imgSinoxActiva; 
+
+            const userLabel = selectedLanguage === 'es' ? 'Tú' : 'You';
+            appendMessage(userLabel, text, true);
+            userInput.value = '';
+
+            const typingText = selectedLanguage === 'es' ? 'Analizando datos...' : 'Analyzing data...';
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message ai-msg';
+            loadingDiv.id = 'loadingMsg';
+            loadingDiv.innerHTML = `<strong>AgroCebada AI:</strong><br><em>${typingText}</em>`;
+            chatContainer.appendChild(loadingDiv);
+            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+
+            try {
+                const response = await fetch('/api/chat/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ sesion_id: sessionId, mensaje: text, language: selectedLanguage, accion: 'chat' })
+                });
+                
+                const data = await response.json();
+                document.getElementById('loadingMsg').remove();
+                
+                if (data.status === 'success') {
+                    appendMessage('AgroCebada AI', data.respuesta, false);
+                } else {
+                    appendMessage('System', 'Error al procesar la respuesta.', false);
+                }
+            } catch (error) {
+                document.getElementById('loadingMsg').remove();
+                appendMessage('System', 'Error de conexión con el servidor.', false);
+                console.error("Detalle:", error);
+            } finally {
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                userInput.focus();
+                mascotImage.src = imgSinoxPasiva; 
+            }
+        }
+    </script>
+</body>
+</html>
