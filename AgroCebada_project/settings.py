@@ -33,6 +33,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# NUEVO (Jonathan, 2026-10-18): el front de React (Vite, puerto 5173) manda los POST del chatbot a Django
+# a través del proxy; Django revisa de dónde vienen y sin esto responde 403. Se puede cambiar en el .env.
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
+
 
 # Application definition
 
@@ -95,6 +99,19 @@ DATABASES = {
         },
     }
 }
+
+# NUEVO (Jonathan, 2026-10-18): conexión de SOLO LECTURA para el chatbot con el rol 'chatbot_lector'
+# (sql/007_rol_chatbot.sql del repo AgroCebada_Datos). Ese rol solo puede leer
+# rendimientos_estimados, v_parcelas_app y matriz_caracteristicas; no ve auth_user
+# (contraseñas) ni puede escribir, aunque el filtro de services.py fallara.
+# Se activa solo si CHATBOT_DB_USER está en el .env; si no, todo sigue igual que antes.
+# Con el pooler de Supabase el usuario lleva el id del proyecto: chatbot_lector.<id_proyecto>
+if os.getenv('CHATBOT_DB_USER'):
+    DATABASES['readonly'] = {
+        **DATABASES['default'],
+        'USER': os.getenv('CHATBOT_DB_USER'),
+        'PASSWORD': os.getenv('CHATBOT_DB_PASSWORD'),
+    }
 
 
 # Password validation

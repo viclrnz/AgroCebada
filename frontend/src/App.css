@@ -40,15 +40,34 @@
 }
 
 .brand-mark {
-  width: 39px;
-  height: 39px;
-  display: grid;
-  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   border-radius: 12px;
   background: #dfe4d4;
-  color: var(--olive-dark);
-  font-size: 22px;
-  font-weight: 800;
+}
+
+.brand-mark img {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+}
+
+.brand img {
+  width: 100%;
+  max-width: 180px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  flex-shrink: 0;
 }
 
 .brand strong,
@@ -791,4 +810,65 @@ tbody tr:last-child td {
   .page-footer {
     flex-direction: column;
   }
+
+}
+
+/* NUEVO (Jonathan, 2026-10-18): mapa real (Leaflet), barras de Análisis y estado del chatbot. */
+.map-real {
+  overflow: hidden;
+  border: 1px solid #e0e2d5;
+  border-radius: 8px;
+}
+
+.map-real .leaflet-container {
+  width: 100%;
+  height: 100%;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.map-legend-real {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.map-legend-real i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 4px;
+  border-radius: 50%;
+}
+
+.bar-list {
+  display: grid;
+  grid-template-columns: fit-content(210px) minmax(60px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+/* Cada fila reparte sus 3 celdas en las columnas de .bar-list para que todas queden alineadas. */
+.bar-row {
+  display: contents;
+}
+
+.bar-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--sage);
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: var(--olive);
+}
+
+.model-active-row td {
+  font-weight: bold;
 }

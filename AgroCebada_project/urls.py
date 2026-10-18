@@ -17,8 +17,17 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from django.urls import path, include 
+from chatbot import views as chatbot_views  # NUEVO (Jonathan, 2026-10-18): para la ruta del widget de React
+
+# MODIFICADO (Jonathan, 2026-10-18): había dos 'urlpatterns =' y el segundo borraba al primero,
+# así que las rutas del bot nunca se registraban. Ahora es una sola lista.
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # urls del chatbot
-    path('bot/', include('chatbot.urls')), 
+    path('bot/', include('chatbot.urls')), # <-- rutas del bot
+    # NUEVO (Jonathan, 2026-10-18): ruta que usa el widget de React (frontend/src/Chatbot.tsx hace fetch a /api/chatbot/).
+    path('api/chatbot/', chatbot_views.chat_endpoint, name='chat_endpoint_react'),
+    path('api/csrf/', chatbot_views.csrf, name='csrf'),  # NUEVO (Jonathan, 2026-10-18): cookie CSRF para React
+    # NUEVO (Jonathan, 2026-10-18): API de parcelas para el Front (listado y detalle).
+    path('api/parcelas/', include('parcelas.urls')),
 ]

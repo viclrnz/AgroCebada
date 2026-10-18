@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AgroCebada AI</title>
+    <title>Cebas · AgroCebada</title>
     <style>
         /* --- PALETA DE COLORES AGROCEBADA --- */
         body {
@@ -219,8 +219,8 @@
     <!-- Pantalla de Bienvenida (Selector de Idiomas) -->
     <div id="welcomeScreen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%;">
         <div style="display: flex; align-items: center; margin-bottom: 30px;">
-            <img src="{% static 'chatbot/sinox.png' %}" alt="Mascota Sinox" style="width: 80px; height: 80px; margin-right: 15px;">
-            <h1 style="color: #2b3024; margin: 0; font-size: 36px;">AgroCebada AI</h1>
+            <img src="{% static 'chatbot/sinox.png' %}" alt="Cebas, asistente de AgroCebada" style="width: 80px; height: 80px; margin-right: 15px;">
+            <h1 style="color: #2b3024; margin: 0; font-size: 36px;">Cebas</h1>
         </div>
         <h2 style="color: #536647; margin-bottom: 40px;">Select your language / Seleccione su idioma</h2>
         <div>
@@ -232,8 +232,8 @@
     <!-- Interfaz de Chat (Oculta por defecto) -->
     <div id="chatUI" style="display: none; flex-direction: column; align-items: center; width: 100%;">
         <div style="display: flex; align-items: center; margin-top: 20px;">
-            <img id="mascotImage" src="{% static 'chatbot/sinox.png' %}" alt="Mascota Sinox" style="width: 60px; height: 60px; margin-right: 15px;">
-            <h1 style="color: #2b3024; margin: 0;">AgroCebada AI</h1>
+            <img id="mascotImage" src="{% static 'chatbot/sinox.png' %}" alt="Cebas, asistente de AgroCebada" style="width: 60px; height: 60px; margin-right: 15px;">
+            <h1 style="color: #2b3024; margin: 0;">Cebas</h1>
         </div>
 
         <!-- Barra de herramientas (Edit y Reroll) -->
@@ -257,6 +257,10 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <script>
+        // MODIFICADO (Jonathan, 2026-10-18): antes se llamaba a '/api/chat/', que no existe (las rutas del bot
+        // están bajo /bot/) y cada mensaje daba 404. La etiqueta url de Django arma la ruta correcta: /bot/api/chat/.
+        const URL_CHAT = '{% url "chat_endpoint" %}';
+
         const sessionId = Date.now();
         let selectedLanguage = 'es'; 
         let userMessageHistory = []; // Almacena el texto del usuario para poder editarlo
@@ -279,12 +283,13 @@
             chatUI.style.display = 'flex';
 
             const greeting = lang === 'es' 
-                ? 'Hola, soy tu asistente técnico de AgroCebada. ¿En qué te puedo ayudar hoy?' 
-                : 'Hello, I am your AgroCebada technical assistant. How can I help you today?';
+                ? 'Hola, soy Cebas, asistente de SocieData para el proyecto AgroCebada. ¿En qué te puedo ayudar hoy?'
+                : 'Hi, I am Cebas, the SocieData assistant for the AgroCebada project. How can I help you today?';
+            // MODIFICADO (Jonathan, 2026-10-18): el asistente se llama Cebas (antes "AgroCebada AI").
             
             chatContainer.innerHTML = `
                 <div class="message ai-msg">
-                    <strong>AgroCebada AI:</strong><br>${greeting}
+                    <strong>Cebas:</strong><br>${greeting}
                 </div>
             `;
             userInput.placeholder = lang === 'es' ? 'Escribe tu mensaje aquí...' : 'Type your message here...';
@@ -369,7 +374,7 @@
             if (userNodes.length > 0) userNodes[userNodes.length - 1].remove();
             if (aiNodes.length > 1) aiNodes[aiNodes.length - 1].remove(); 
             
-            await fetch('/api/chat/', {
+            await fetch(URL_CHAT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
                 body: JSON.stringify({ sesion_id: sessionId, accion: 'undo' })
@@ -392,12 +397,12 @@
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'message ai-msg';
             loadingDiv.id = 'loadingMsg';
-            loadingDiv.innerHTML = `<strong>AgroCebada AI:</strong><br><em>${typingText}</em>`;
+            loadingDiv.innerHTML = `<strong>Cebas:</strong><br><em>${typingText}</em>`;
             chatContainer.appendChild(loadingDiv);
             chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
 
             try {
-                const response = await fetch('/api/chat/', {
+                const response = await fetch(URL_CHAT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
                     body: JSON.stringify({ sesion_id: sessionId, language: selectedLanguage, accion: 'reroll' })
@@ -406,7 +411,7 @@
                 document.getElementById('loadingMsg').remove();
                 
                 if (data.status === 'success') {
-                    appendMessage('AgroCebada AI', data.respuesta, false);
+                    appendMessage('Cebas', data.respuesta, false);
                 }
             } catch (error) {
                 document.getElementById('loadingMsg').remove();
@@ -436,12 +441,12 @@
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'message ai-msg';
             loadingDiv.id = 'loadingMsg';
-            loadingDiv.innerHTML = `<strong>AgroCebada AI:</strong><br><em>${typingText}</em>`;
+            loadingDiv.innerHTML = `<strong>Cebas:</strong><br><em>${typingText}</em>`;
             chatContainer.appendChild(loadingDiv);
             chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
 
             try {
-                const response = await fetch('/api/chat/', {
+                const response = await fetch(URL_CHAT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
                     body: JSON.stringify({ sesion_id: sessionId, mensaje: text, language: selectedLanguage, accion: 'chat' })
@@ -451,7 +456,7 @@
                 document.getElementById('loadingMsg').remove();
                 
                 if (data.status === 'success') {
-                    appendMessage('AgroCebada AI', data.respuesta, false);
+                    appendMessage('Cebas', data.respuesta, false);
                 } else {
                     appendMessage('System', 'Error al procesar la respuesta.', false);
                 }
