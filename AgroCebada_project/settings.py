@@ -43,12 +43,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders', #agregado(para request, no se rompa en el caso de cors-headers )
     'parcelas', #agregado
     'chatbot', #agregado
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware', # <- ¡NUEVO! para el cors-headers
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -140,3 +142,18 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+# --- CORS Y CSRF PARA REACT ---
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.getenv(
+        'CORS_ALLOWED_ORIGINS',
+        'http://localhost:5173,http://localhost:3000'
+    ).split(',')
+    if o.strip()
+]
+
+# Debe incluir los mismos orígenes (con esquema http/https) para que Django acepte el token CSRF
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS

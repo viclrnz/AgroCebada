@@ -219,3 +219,8 @@ __marimo__/
 
 #env
 .env
+
+source/
+venv/
+__pycache__
+*.sqlite3
