@@ -1,21 +1,20 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../App.css'
+import { etiquetaOrigen, useParcelas } from '../api'
 
-const parcelasDemo = [
-  { id: '001', estado: 'Hidalgo', municipio: 'Municipio A', area: '4.2 ha', rendimiento: '3.85 t/ha', status: 'Estimado' },
-  { id: '002', estado: 'Tlaxcala', municipio: 'Municipio B', area: '2.8 ha', rendimiento: '4.12 t/ha', status: 'Estimado' },
-  { id: '003', estado: 'Puebla', municipio: 'Municipio C', area: '5.1 ha', rendimiento: '—', status: 'Pendiente' },
-]
+// MODIFICADO (Jonathan, 2026-10-18): antes usaba 3 parcelas de demostración (parcelasDemo).
+// Ahora carga las 197 parcelas reales desde /api/parcelas/ (tabla rendimientos_estimados).
 
 function Parcelas() {
   const navigate = useNavigate()
   const [busqueda, setBusqueda] = useState('')
   const [estado, setEstado] = useState('Todos')
+  const { parcelas, cargando, error } = useParcelas()
 
-  const parcelasFiltradas = parcelasDemo.filter((parcela) => {
+  const parcelasFiltradas = parcelas.filter((parcela) => {
     const coincideBusqueda =
-      `${parcela.id} ${parcela.municipio} ${parcela.estado}`
+      `${parcela.id_poligono} ${parcela.municipio} ${parcela.estado}`
         .toLowerCase()
         .includes(busqueda.toLowerCase())
 
@@ -33,14 +32,14 @@ function Parcelas() {
           <h1>Parcelas</h1>
           <p>Consulta y filtra las parcelas registradas.</p>
         </div>
-        <div className="date-chip">Datos de demostración</div>
+        <div className="date-chip">Datos reales</div>
       </div>
 
       <section className="panel table-panel">
         <div className="panel-heading">
           <div>
             <h2>Listado de parcelas</h2>
-            <p>{parcelasFiltradas.length} resultados de demostración</p>
+            <p>{cargando ? 'Cargando...' : `${parcelasFiltradas.length} resultados`}</p>
           </div>
         </div>
 
@@ -76,34 +75,35 @@ function Parcelas() {
                 <th>Municipio</th>
                 <th>Área</th>
                 <th>Rendimiento</th>
-                <th>Estado del dato</th>
+                <th>Origen del dato</th>
               </tr>
             </thead>
             <tbody>
               {parcelasFiltradas.map((parcela) => (
-                <tr key={parcela.id}>
+                <tr key={parcela.id_poligono}>
                 <td>
                 <button
                     className="text-button"
-                    onClick={() => navigate(`/parcelas/${parcela.id}`)}
+                    onClick={() => navigate(`/parcelas/${parcela.id_poligono}`)}
                 >
-                    #{parcela.id}
+                    #{parcela.id_poligono}
                 </button>
                 </td>
                   <td>{parcela.estado}</td>
                   <td>{parcela.municipio}</td>
-                  <td>{parcela.area}</td>
-                  <td className="yield-value">{parcela.rendimiento}</td>
+                  <td>{parcela.superficie_ha.toFixed(2)} ha</td>
+                  <td className="yield-value">{parcela.rendimiento_estimado_t_ha.toFixed(2)} t/ha</td>
                   <td>
-                    <span className={`table-status ${parcela.status === 'Estimado' ? 'estimated' : 'pending'}`}>
-                      <span /> {parcela.status}
+                    {/* Verde = estimado por el modelo, ocre = medido en campo */}
+                    <span className={`table-status ${parcela.origen === 'modelo' ? 'estimated' : 'pending'}`}>
+                      <span /> {etiquetaOrigen(parcela)}
                     </span>
                   </td>
                 </tr>
               ))}
-              {parcelasFiltradas.length === 0 && (
+              {!cargando && parcelasFiltradas.length === 0 && (
                 <tr>
-                  <td colSpan={6}>No se encontraron parcelas.</td>
+                  <td colSpan={6}>{error || 'No se encontraron parcelas.'}</td>
                 </tr>
               )}
             </tbody>
@@ -111,7 +111,7 @@ function Parcelas() {
         </div>
 
         <p className="data-note">
-          Datos ficticios para el prototipo. No representan registros reales ni resultados validados del modelo.
+          Observado: rendimiento medido en campo. Estimado: predicción del modelo para parcelas sin medición.
         </p>
       </section>
     </section>

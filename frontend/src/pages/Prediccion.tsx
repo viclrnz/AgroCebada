@@ -1,9 +1,13 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import '../App.css'
+import { useParcela } from '../api'
 
+// MODIFICADO (Jonathan, 2026-10-18): ahora muestra el rendimiento real de /api/parcelas/<id>/.
+// Las variables satelitales y climáticas siguen pendientes.
 function Prediccion() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const { parcela: p, aviso } = useParcela(id)
 
   return (
     <section className="page-content">
@@ -16,7 +20,7 @@ function Prediccion() {
             para generarla.
           </p>
         </div>
-        <div className="date-chip">Vista de demostración</div>
+        <div className="date-chip">Datos reales</div>
       </div>
 
       <button
@@ -36,14 +40,14 @@ function Prediccion() {
 
         <article className="kpi-card">
           <div className="kpi-label">Rendimiento estimado</div>
-          <div className="kpi-value">— <small>t/ha</small></div>
-          <div className="kpi-foot">Pendiente de ejecutar el modelo</div>
+          <div className="kpi-value">{p ? p.rendimiento_estimado_t_ha.toFixed(2) : '—'} <small>t/ha</small></div>
+          <div className="kpi-foot">{p ? (p.origen === 'observado' ? 'Valor medido en campo' : 'Valor predicho') : aviso}</div>
         </article>
 
         <article className="kpi-card">
           <div className="kpi-label">Estado de la predicción</div>
-          <div className="kpi-value model-value">Pendiente</div>
-          <div className="kpi-foot">Modelo aún no conectado</div>
+          <div className="kpi-value model-value">{p ? (p.origen === 'observado' ? 'Observado' : 'Estimado') : '—'}</div>
+          <div className="kpi-foot">{p ? (p.modelo ? `Modelo ${p.modelo}` : 'No requiere modelo') : aviso}</div>
         </article>
       </section>
 
@@ -52,8 +56,8 @@ function Prediccion() {
           <div>
             <h2>Información de la estimación</h2>
             <p>
-              Los resultados se mostrarán cuando integremos el modelo de
-              aprendizaje automático.
+              El rendimiento ya viene del modelo; las variables usadas aún
+              están pendientes de integración.
             </p>
           </div>
         </div>

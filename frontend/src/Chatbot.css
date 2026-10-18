@@ -206,3 +206,30 @@
     bottom: 12px;
   }
 }
+
+/* NUEVO (Jonathan, 2026-10-18): respuesta del bot con varias líneas y viñetas en una sola burbuja. */
+.chatbot-text {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 14px;
+  background: white;
+  color: #403a35;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.chatbot-message .chatbot-text p {
+  margin: 0 0 6px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.chatbot-message .chatbot-text p:last-child {
+  margin-bottom: 0;
+}
+
+.chatbot-message .chatbot-text .chatbot-bullet {
+  padding-left: 6px;
+}
