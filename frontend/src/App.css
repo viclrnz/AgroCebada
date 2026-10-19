@@ -872,3 +872,196 @@ tbody tr:last-child td {
 .model-active-row td {
   font-weight: bold;
 }
+
+
+/* LOGIN — AgroCebada / SocieData */
+.login-page {
+  --login-olive: #596344;
+  --login-dark: #3e4932;
+  --login-cream: #f6f5ef;
+  --login-paper: #fffefa;
+
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 28px 18px;
+  background:
+    radial-gradient(ellipse at 12% 15%, #dfe4d4 0, transparent 36%),
+    radial-gradient(ellipse at 90% 85%, #e1c7bf 0, transparent 30%),
+    var(--login-cream);
+  color: #30332b;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 430px;
+  padding: 42px;
+  border: 1px solid #e8e7de;
+  border-radius: 18px;
+  background: var(--login-paper);
+  box-shadow: 0 18px 55px rgb(49 54 37 / 10%);
+}
+
+.login-card .eyebrow {
+  margin-bottom: 18px;
+  color: var(--login-olive);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.login-card h1 {
+  margin: 0;
+  color: var(--login-dark);
+  font-size: clamp(30px, 5vw, 36px);
+  font-weight: 650;
+  letter-spacing: -1.3px;
+}
+
+.login-card > p {
+  margin: 12px 0 28px;
+  color: #77796d;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.login-card form {
+  display: grid;
+  gap: 9px;
+}
+
+.login-card label {
+  margin-top: 9px;
+  color: #45483e;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.login-card input {
+  width: 100%;
+  min-height: 46px;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid #dedfd5;
+  border-radius: 8px;
+  outline: none;
+  background: #fff;
+  color: #30332b;
+  font: inherit;
+  font-size: 13px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.login-card input:focus {
+  border-color: var(--login-olive);
+  box-shadow: 0 0 0 3px rgb(89 99 68 / 12%);
+}
+
+.login-card form button {
+  min-height: 47px;
+  margin-top: 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--login-dark);
+  color: white;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.login-card form button:hover:not(:disabled) {
+  background: var(--login-olive);
+  transform: translateY(-1px);
+}
+
+.login-card form button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.login-card .login-error {
+  margin: 8px 0 0;
+  padding: 11px 12px;
+  border: 1px solid #e9c8c2;
+  border-radius: 7px;
+  background: #fbefed;
+  color: #963e34;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.login-card .login-footer {
+  margin: 24px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid #e8e7de;
+  color: #858779;
+  font-size: 10px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 30px 23px;
+    border-radius: 14px;
+  }
+}
+
+
+/* Acciones del encabezado del dashboard */
+.heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.login-access-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid #3e4932;
+  border-radius: 8px;
+  background: #3e4932;
+  color: #fffefa;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.login-access-button:hover {
+  border-color: #596344;
+  background: #596344;
+  box-shadow: 0 4px 12px rgb(62 73 50 / 15%);
+  transform: translateY(-1px);
+}
+
+.login-access-button:focus-visible {
+  outline: 3px solid #b0926a;
+  outline-offset: 3px;
+}
+
+@media (max-width: 700px) {
+  .heading-actions {
+    gap: 8px;
+  }
+
+  .login-access-button {
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 11px;
+  }
+}

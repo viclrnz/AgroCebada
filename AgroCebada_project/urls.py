@@ -19,6 +19,7 @@ from django.urls import path
 
 from django.urls import path, include 
 from chatbot import views as chatbot_views  # NUEVO (Jonathan, 2026-10-18): para la ruta del widget de React
+from AgroCebada_project import auth_views 
 
 # MODIFICADO (Jonathan, 2026-10-18): había dos 'urlpatterns =' y el segundo borraba al primero,
 # así que las rutas del bot nunca se registraban. Ahora es una sola lista.
@@ -27,7 +28,12 @@ urlpatterns = [
     path('bot/', include('chatbot.urls')), # <-- rutas del bot
     # NUEVO (Jonathan, 2026-10-18): ruta que usa el widget de React (frontend/src/Chatbot.tsx hace fetch a /api/chatbot/).
     path('api/chatbot/', chatbot_views.chat_endpoint, name='chat_endpoint_react'),
-    path('api/csrf/', chatbot_views.csrf, name='csrf'),  # NUEVO (Jonathan, 2026-10-18): cookie CSRF para React
+    path('api/csrf/', auth_views.csrf, name='csrf'),  # NUEVO (Jonathan, 2026-10-18): cookie CSRF para React
     # NUEVO (Jonathan, 2026-10-18): API de parcelas para el Front (listado y detalle).
+        # NUEVO REN: autenticación de usuarios con Django.
+    path('api/auth/login/', auth_views.iniciar_sesion, name='login_api'),
+    path('api/auth/me/', auth_views.sesion_actual, name='sesion_actual_api'),
+    path('api/auth/logout/', auth_views.cerrar_sesion, name='logout_api'),
     path('api/parcelas/', include('parcelas.urls')),
+    
 ]
