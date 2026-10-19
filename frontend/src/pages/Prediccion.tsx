@@ -2,6 +2,7 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import '../App.css'
 import { useParcela } from '../api'
+import { CloudSun, Droplets, Sprout, Mountain } from 'lucide-react'
 
 const gruposVariables = [
   {
@@ -75,6 +76,13 @@ function Prediccion() {
     : '—'
 
   const rendimiento = p?.rendimiento_estimado_t_ha
+
+  const iconosVariables = {
+  Clima: CloudSun,
+  Agua: Droplets,
+  Fenología: Sprout,
+  'Suelo y topografía': Mountain,
+}
 
   return (
     <section className="page-content">
@@ -167,22 +175,46 @@ function Prediccion() {
         </div>
 
         <div className="variables-grid">
-          {gruposVariables.map((grupo) => (
-            <article className="variable-group" key={grupo.titulo}>
-              <h3>{grupo.titulo}</h3>
-              <p>{grupo.descripcion}</p>
-              <ul>
-                {grupo.variables.map((variable) => (
-                  <li key={variable.nombre}>
-                    <strong>{variable.etiqueta}</strong>
-                    <span>{variable.nombre}</span>
-                    <small>Unidad: {variable.unidad}</small>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
+          {gruposVariables.map((grupo) => {
+            return (
+              <article className="variable-group" key={grupo.titulo}>
+                <div className="variable-group-heading">
+                  <div
+                    className={`variable-icon variable-icon-${
+                      grupo.titulo === 'Suelo y topografía'
+                        ? 'suelo'
+                        : grupo.titulo.toLowerCase()
+                    }`}
+                  >
+                    {(() => {
+                      const Icono = iconosVariables[
+                        grupo.titulo as keyof typeof iconosVariables
+                      ]
+
+                      return <Icono size={23} strokeWidth={1.7} />
+                    })()}
+                  </div>
+
+                  <div className="variable-group-title">
+                    <h3>{grupo.titulo}</h3>
+                    <p>{grupo.descripcion}</p>
+                  </div>
+                </div>
+
+                <ul>
+                  {grupo.variables.map((variable) => (
+                    <li key={variable.nombre}>
+                      <strong>{variable.etiqueta}</strong>
+                      <span>{variable.nombre}</span>
+                      <small>Unidad: {variable.unidad}</small>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            )
+          })}
         </div>
+
 
         <p className="kpi-foot" style={{ marginTop: 20 }}>
           El rendimiento reportado corresponde al ciclo de producción de

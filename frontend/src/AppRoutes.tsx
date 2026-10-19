@@ -6,11 +6,13 @@ import DetalleParcela from './pages/DetalleParcela'
 import Prediccion from './pages/Prediccion'
 import Analisis from './pages/Analisis' // NUEVO (Jonathan, 2026-10-18)
 import Login from './pages/Login' // NUEVO (Ren 2026-10-18)
+import Registro from './pages/Registro' 
 
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} /> 
+      <Route path="/registro" element={<Registro />} />
       <Route path="/" element={<Dashboard />} />
       <Route path="/mapa" element={<MapaParcelas />} />
       <Route path="/parcelas" element={<Parcelas />} />

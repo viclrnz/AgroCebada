@@ -35,5 +35,6 @@ urlpatterns = [
     path('api/auth/me/', auth_views.sesion_actual, name='sesion_actual_api'),
     path('api/auth/logout/', auth_views.cerrar_sesion, name='logout_api'),
     path('api/parcelas/', include('parcelas.urls')),
+    path('api/auth/register/', auth_views.registrar_usuario, name='registro_api'),
     
 ]

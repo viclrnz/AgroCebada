@@ -1065,3 +1065,156 @@ tbody tr:last-child td {
     font-size: 11px;
   }
 }
+
+/* Cuadrícula de variables agrícolas */
+.variables-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+  align-items: stretch;
+}
+
+/* Tarjetas blancas */
+.variable-group {
+  background: #ffffff;
+  border: 1px solid #eae8e0;
+  border-radius: 16px;
+  padding: 22px;
+  min-width: 0;
+  box-shadow: 0 3px 12px rgba(55, 65, 45, 0.045);
+  transition:
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.variable-group:hover {
+  box-shadow: 0 7px 20px rgba(55, 65, 45, 0.09);
+  transform: translateY(-2px);
+}
+
+/* Encabezado con icono y descripción */
+.variable-group-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  margin-bottom: 20px;
+}
+
+.variable-icon {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+  font-size: 25px;
+}
+
+.variable-icon svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Pequeños acentos de color */
+.variable-icon-clima {
+  background: #e8eddf;
+  color: #45543b;
+}
+
+.variable-icon-agua {
+  background: #e5ecea;
+  color: #547b78;
+}
+
+.variable-icon-fenología {
+  background: #f5ead7;
+  color: #987847;
+}
+
+.variable-icon-suelo {
+  background: #eee5df;
+  color: #876653;
+}
+
+.variable-group-title {
+  min-width: 0;
+}
+
+.variable-group-title h3 {
+  margin: 2px 0 5px;
+  color: #35412f;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.variable-group-title p {
+  margin: 0;
+  color: #858477;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Lista de variables */
+.variable-group ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.variable-group li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 13px 0;
+  border-top: 1px solid #f0eee8;
+  min-width: 0;
+}
+
+.variable-group li strong {
+  color: #44463d;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.variable-group li span {
+  color: #8a897e;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.variable-group li small {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #f5f3ed;
+  color: #77715f;
+  font-size: 10px;
+}
+
+/* Adaptación a pantallas pequeñas */
+@media (max-width: 760px) {
+  .variables-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .variable-group {
+    padding: 18px;
+  }
+}
+
+.registro-success {
+  padding: 12px;
+  border: 1px solid #d8e3cf;
+  border-radius: 10px;
+  background: #edf3e8;
+  color: #40583a;
+  font-size: 13px;
+  line-height: 1.5;
+}
