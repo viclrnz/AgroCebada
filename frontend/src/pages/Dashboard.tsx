@@ -63,7 +63,7 @@ function Dashboard() {
             <span className="kpi-label">Modelo activo</span>
             <span className="kpi-icon brown">⌘</span>
           </div>
-          <div className="kpi-value model-value">{vigente.nombre} {vigente.variables} vars</div>
+          <div className="kpi-value model-value">{vigente.corto}</div>
           <div className="kpi-foot"><span className="status-pill">R² {vigente.r2.toFixed(2)}</span></div>
         </article>
       </section>

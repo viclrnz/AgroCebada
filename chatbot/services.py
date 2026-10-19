@@ -91,7 +91,7 @@ GLOSARIO DEL PROYECTO:
 - rendimiento_estimado_t_ha: el rendimiento que muestra la app. En ENTRENAMIENTO es el observado; en PREDICCION es el que predijo el modelo.
 - conjunto: ENTRENAMIENTO son parcelas con rendimiento medido en campo, usadas para entrenar el modelo; PREDICCION son parcelas sin medición, cuyo rendimiento estima el modelo.
 - origen: 'observado' (medido en campo) o 'modelo' (predicho).
-- modelo: nombre del modelo que generó la predicción (por ejemplo, 'ensamble_16vars' = ensamble de Random Forest y SVR con 16 variables). Es nulo si el valor es observado.
+- modelo: nombre del modelo que generó la predicción (por ejemplo, 'ensamble_16vars' = Modelo 5: Ensamble Final tras selección de variables SBE, 16 variables predictoras). Es nulo si el valor es observado.
 - latitud / longitud: ubicación de la parcela en grados (WGS84), en el centro del polígono.
 - NDVI / EVI: índices de vegetación calculados con imágenes satelitales; valores más altos indican vegetación más vigorosa."""
 # NUEVO (v4): se integraron al archivo los bloques MODOS DE RESPUESTA y GLOSARIO que ya habías agregado a mano en tu
