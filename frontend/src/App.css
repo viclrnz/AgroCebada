@@ -1218,3 +1218,23 @@ tbody tr:last-child td {
   font-size: 13px;
   line-height: 1.5;
 }
+
+
+.login-register-prompt {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #706134;
+}
+
+.login-register-link {
+  color: #706134;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.login-register-link:hover {
+  color: #4f6b45;
+  text-decoration: underline;
+}

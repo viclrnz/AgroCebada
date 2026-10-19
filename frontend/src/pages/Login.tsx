@@ -1,6 +1,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom';
 import '../App.css'
 
 function Login() {
@@ -99,6 +100,15 @@ function Login() {
             {cargando ? 'Conectando…' : 'Iniciar sesión'}
           </button>
         </form>
+
+        
+        <p className="login-register-prompt">
+            ¿Aún no tienes cuenta?{" "}
+            <Link to="/registro" className="login-register-link">
+                Regístrate
+            </Link>
+        </p>
+
 
         <p className="login-footer">
           Acceso autorizado a la plataforma AgroCebada.
