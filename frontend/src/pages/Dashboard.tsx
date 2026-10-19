@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import '../App.css'
 import { etiquetaOrigen, promedio, useParcelas } from '../api'
 import MapaRendimiento, { LeyendaMapa } from '../components/MapaRendimiento'
-import { METRICAS, MODELO_VIGENTE } from '../metricas'
+import { METRICAS, MODELO_VIGENTE, nombreModelo } from '../metricas'
 
 function Dashboard() {
   const navigate = useNavigate()
@@ -107,7 +107,7 @@ function Dashboard() {
           </div>
           <div className="model-footer">
             <span>Versión del modelo</span>
-            <strong>{MODELO_VIGENTE}</strong>
+            <strong>{nombreModelo(MODELO_VIGENTE)}</strong>
           </div>
           <button className="text-button" onClick={() => navigate('/analisis')} style={{ marginTop: 12 }}>
             Ver análisis del modelo →

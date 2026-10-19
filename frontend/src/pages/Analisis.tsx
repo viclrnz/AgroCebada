@@ -2,7 +2,7 @@
 // pero no existía la página y caía en el Dashboard.
 import '../App.css'
 import { promedio, useParcelas, type Parcela } from '../api'
-import { METRICAS, MODELO_VIGENTE, PARCELAS_EVALUADAS } from '../metricas'
+import { METRICAS, MODELO_VIGENTE, PARCELAS_EVALUADAS, nombreModelo } from '../metricas'
 
 type Grupo = { nombre: string; parcelas: number; promedio: number }
 
@@ -42,14 +42,14 @@ function Analisis() {
           <h1>Análisis del modelo</h1>
           <p>Compara los modelos probados y revisa el rendimiento por zona.</p>
         </div>
-        <div className="date-chip">Modelo activo: {MODELO_VIGENTE}</div>
+        <div className="date-chip">Modelo activo: {nombreModelo(MODELO_VIGENTE)}</div>
       </div>
 
       <section className="panel table-panel" style={{ marginBottom: 20, paddingBottom: 21 }}>
         <div className="panel-heading">
           <div>
             <h2>Comparación de modelos</h2>
-            <p>Error contra el rendimiento medido en las {PARCELAS_EVALUADAS} parcelas de entrenamiento.</p>
+            <p>Error en validación cruzada contra el rendimiento medido en las {PARCELAS_EVALUADAS} parcelas de entrenamiento.</p>
           </div>
         </div>
         <div className="table-scroll">
@@ -78,7 +78,7 @@ function Analisis() {
         </div>
         <p className="data-note">
           RMSE y MAE: error promedio en toneladas por hectárea (menos es mejor). R²: qué tanto explica el
-          modelo las diferencias entre parcelas (1 es perfecto). Se eligió el SVR porque tiene el menor error.
+          modelo las diferencias entre parcelas (1 es perfecto). Se eligió el ensamble de Random Forest y SVR con 16 variables porque tiene el menor error.
         </p>
       </section>
 
