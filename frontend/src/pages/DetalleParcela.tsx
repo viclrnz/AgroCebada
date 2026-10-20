@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import '../App.css'
 import { etiquetaOrigen, useParcela } from '../api'
+import { nombreModelo } from '../metricas'
 
 // MODIFICADO (Jonathan, 2026-10-18): antes mostraba textos "Pendiente de integración".
 // Ahora pide la parcela a /api/parcelas/<id>/ y muestra sus datos reales.
@@ -39,7 +40,7 @@ function DetalleParcela() {
         <article className="kpi-card">
           <div className="kpi-label">Rendimiento</div>
           <div className="kpi-value">{p ? p.rendimiento_estimado_t_ha.toFixed(2) : '—'} <small>t/ha</small></div>
-          <div className="kpi-foot">{p ? (p.origen === 'observado' ? 'Medido en campo' : `Estimado con ${p.modelo}`) : aviso}</div>
+          <div className="kpi-foot">{p ? (p.origen === 'observado' ? 'Medido en campo' : `Estimado con ${nombreModelo(p.modelo)}`) : aviso}</div>
         </article>
 
         <article className="kpi-card">
