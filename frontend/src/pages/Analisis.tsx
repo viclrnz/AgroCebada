@@ -78,7 +78,7 @@ function Analisis() {
         </div>
         <p className="data-note">
           RMSE y MAE: error promedio en toneladas por hectárea (menos es mejor). R²: qué tanto explica el
-          modelo las diferencias entre parcelas (1 es perfecto). Se eligió el Modelo 5 (Ensamble Final tras selección de variables SBE, 16 variables: 0.16 Random Forest + 0.84 SVR) porque tiene el menor error.
+          modelo las diferencias entre parcelas (1 es perfecto). Se eligió el Ensamble Final RF + SVR (16 variables: 0.16 Random Forest + 0.84 SVR) porque tiene el menor error.
         </p>
       </section>
 

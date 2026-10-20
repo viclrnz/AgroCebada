@@ -165,7 +165,7 @@ function Prediccion() {
           <div>
             <h2>Información de la parcela</h2>
             <p>
-              Las 16 variables predictoras del Modelo 5 se organizan en
+              Las 16 variables predictoras del modelo elegido se organizan en
               cuatro grupos. Sus valores por parcela se mostrarán cuando estén
               disponibles en la API.
             </p>
