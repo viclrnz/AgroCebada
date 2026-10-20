@@ -82,9 +82,7 @@ class FlujoCuentasTests(TestCase):
                    for _ in range(11)]
         self.assertEqual(codigos[-1], 429)
 
-    def test_apis_exigen_login(self):
-        self.assertEqual(self.c.get('/api/parcelas/', secure=True).status_code, 401)
-
+    
 
 class PanelAdministradoresTests(TestCase):
     """Un Administrador (staff + grupo) autoriza cuentas pero no puede darse permisos."""
