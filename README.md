@@ -3,9 +3,11 @@
 <p align="center">
   <a href="https://agrocebada-alss.onrender.com/"><img src="https://img.shields.io/badge/Ver%20la%20aplicaci%C3%B3n-en%20l%C3%ADnea-2e7d32?style=for-the-badge" alt="Ver la aplicación en línea"></a>
   <a href="https://github.com/viclrnz/AgroCebada_Datos"><img src="https://img.shields.io/badge/Repositorio-de%20datos-24292e?style=for-the-badge&logo=github" alt="Repositorio de datos"></a>
+<a href="https://youtu.be/5i2wEbqDBFk"><img src="https://img.shields.io/badge/Ver%20el%20video-demostrativo-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Ver el video demostrativo"></a>
 </p>
 
 > **Aplicación en línea:** [https://agrocebada-alss.onrender.com/](https://agrocebada-alss.onrender.com/)<br>
+> **Video demostrativo:** [https://youtu.be/5i2wEbqDBFk](https://youtu.be/5i2wEbqDBFk)<br>
 > **Repositorio de datos (ETL, notebooks y modelo):** [https://github.com/viclrnz/AgroCebada_Datos](https://github.com/viclrnz/AgroCebada_Datos)<br>
 > La aplicación está en un servidor gratuito: la primera carga puede tardar alrededor de un minuto mientras el servidor despierta.
 
