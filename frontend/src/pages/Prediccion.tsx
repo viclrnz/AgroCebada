@@ -2,6 +2,7 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import '../App.css'
 import { useParcela } from '../api'
+import { nombreModelo } from '../metricas'
 import { CloudSun, Droplets, Sprout, Mountain } from 'lucide-react'
 
 const gruposVariables = [
@@ -133,7 +134,7 @@ function Prediccion() {
             {p
               ? esEntrenamiento
                 ? 'Dato reportado para el ciclo de referencia'
-                : `Estimación del modelo ${p.modelo ?? 'disponible'}`
+                : `Estimación del modelo ${p.modelo ? nombreModelo(p.modelo) : 'disponible'}`
               : aviso}
           </div>
         </article>

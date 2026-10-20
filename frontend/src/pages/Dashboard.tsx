@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import '../App.css'
 import { etiquetaOrigen, promedio, useParcelas } from '../api'
 import MapaRendimiento, { LeyendaMapa } from '../components/MapaRendimiento'
-import { METRICAS, MODELO_VIGENTE } from '../metricas'
+import { METRICAS, MODELO_VIGENTE, nombreModelo } from '../metricas'
 
 function Dashboard() {
   const navigate = useNavigate()
@@ -63,7 +63,7 @@ function Dashboard() {
             <span className="kpi-label">Modelo activo</span>
             <span className="kpi-icon brown">⌘</span>
           </div>
-          <div className="kpi-value model-value">{vigente.nombre} {vigente.variables} vars</div>
+          <div className="kpi-value model-value">{vigente.corto}</div>
           <div className="kpi-foot"><span className="status-pill">R² {vigente.r2.toFixed(2)}</span></div>
         </article>
       </section>
@@ -107,7 +107,7 @@ function Dashboard() {
           </div>
           <div className="model-footer">
             <span>Versión del modelo</span>
-            <strong>{MODELO_VIGENTE}</strong>
+            <strong>{nombreModelo(MODELO_VIGENTE)}</strong>
           </div>
           <button className="text-button" onClick={() => navigate('/analisis')} style={{ marginTop: 12 }}>
             Ver análisis del modelo →
