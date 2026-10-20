@@ -1,0 +1,73 @@
+# Configuración de Render (Blueprint) para AgroCebada.
+# En Render: New → Blueprint → elegir este repo. Render crea los dos servicios y pide los valores marcados
+# con "sync: false" (contraseñas y datos de Supabase), que NUNCA se escriben en este archivo.
+# Cada push a main vuelve a publicar los dos servicios.
+
+services:
+  # --- Backend: Django ---
+  - type: web
+    name: agrocebada-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: gunicorn AgroCebada_project.wsgi
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true          # Render genera una llave nueva y segura
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: agrocebada-api.onrender.com
+      - key: DJANGO_DETRAS_DE_PROXY
+        value: "True"
+      - key: DJANGO_ADMIN_URL
+        sync: false                  # algo difícil de adivinar terminado en /, ej. panel-agc-7x2/
+      # La dirección del frontend (con https:// y sin / al final)
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://agrocebada.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://agrocebada.onrender.com
+      # Supabase (los mismos valores de tu .env)
+      - key: DB_ENGINE
+        value: django.db.backends.postgresql
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      # Rol de solo lectura del chatbot
+      - key: CHATBOT_DB_USER
+        sync: false
+      - key: CHATBOT_DB_PASSWORD
+        sync: false
+      - key: CHATBOT_DB_ALIAS
+        value: readonly
+      # IA del chatbot
+      - key: SINOX_API_KEY
+        sync: false
+      - key: CHATBOT_MODEL
+        sync: false
+
+  # --- Frontend: React (sitio estático) ---
+  - type: web
+    name: agrocebada
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      # 1) Las llamadas a /api/ se reenvían a Django (así cookies y CSRF funcionan como con el proxy de Vite)
+      - type: rewrite
+        source: /api/*
+        destination: https://agrocebada-api.onrender.com/api/*
+      # 2) Cualquier otra ruta la muestra React (evita 404 al recargar /login o /parcelas)
+      - type: rewrite
+        source: /*
+        destination: /index.html
