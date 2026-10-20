@@ -31,7 +31,12 @@ const gruposVariables = [
     titulo: 'Agua',
     descripcion: 'Disponibilidad y balance hídrico del cultivo.',
     variables: [
-      { nombre: 'ac_lluvia_pre_mm', etiqueta: 'Lluvia previa al ciclo', unidad: 'mm' },
+      { nombre: 'ac_lluvia_ciclo_mm', etiqueta: 'Lluvia acumulada del ciclo', unidad: 'mm' },
+      {
+        nombre: 'ac_lluvia_ciclo_anom_rel',
+        etiqueta: 'Anomalía relativa de la lluvia del ciclo',
+        unidad: 'Adimensional',
+      },
       { nombre: 'ac_gdd_ciclo', etiqueta: 'Grados-día acumulados del ciclo', unidad: 'Por confirmar' },
       {
         nombre: 'ac_lluvia_max_dia_ciclo_mm',
@@ -51,15 +56,18 @@ const gruposVariables = [
         etiqueta: 'Día del año en que el NDVI cae al 50 % tras su pico',
         unidad: 'Día del año',
       },
+      { nombre: 'pl_ndvi_int_abr_oct', etiqueta: 'NDVI integrado de abril a octubre', unidad: 'Adimensional' },
+      { nombre: 'pl_lai_int_ciclo', etiqueta: 'Índice de área foliar integrado del ciclo', unidad: 'Adimensional' },
     ],
   },
   {
     titulo: 'Suelo y topografía',
     descripcion: 'Características del terreno relacionadas con el rendimiento.',
     variables: [
-      { nombre: 'soil_agua_disp_mm', etiqueta: 'Agua disponible en el suelo', unidad: 'mm' },
-      { nombre: 'soil_soc_g_kg', etiqueta: 'Carbono orgánico del suelo', unidad: 'g/kg' },
+      { nombre: 'soil_arcilla_pct', etiqueta: 'Contenido de arcilla del suelo', unidad: '%' },
       { nombre: 'pend_media_grados', etiqueta: 'Pendiente media del terreno', unidad: '°' },
+      { nombre: 'elev_media_m', etiqueta: 'Elevación media del terreno', unidad: 'm' },
+      { nombre: 'area_ha_geod', etiqueta: 'Superficie de la parcela', unidad: 'ha' },
     ],
   },
 ]
@@ -157,7 +165,7 @@ function Prediccion() {
           <div>
             <h2>Información de la parcela</h2>
             <p>
-              Las 12 variables seleccionadas para el modelo se organizan en
+              Las 16 variables predictoras del Modelo 5 se organizan en
               cuatro grupos. Sus valores por parcela se mostrarán cuando estén
               disponibles en la API.
             </p>
