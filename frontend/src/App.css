@@ -1238,3 +1238,51 @@ tbody tr:last-child td {
   color: #4f6b45;
   text-decoration: underline;
 }
+
+
+/* Botón para cerrar sesión */
+.user-profile button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border: 1px solid #d9dfd2;
+  border-radius: 10px;
+  background: #f7f8f4;
+  color: #46513b;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.user-profile button:hover:not(:disabled) {
+  background: #46513b;
+  color: #ffffff;
+  border-color: #46513b;
+  box-shadow: 0 4px 10px rgba(70, 81, 59, 0.16);
+  transform: translateY(-1px);
+}
+
+.user-profile button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.user-profile button:focus-visible {
+  outline: 3px solid #b0926a;
+  outline-offset: 3px;
+}
+
+.user-profile button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}

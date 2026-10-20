@@ -2,6 +2,23 @@
 // En desarrollo Vite reenvía /api a http://localhost:8000 (ver vite.config.ts).
 import { useEffect, useState } from 'react'
 
+// Centraliza las peticiones y detecta sesiones vencidas.
+export async function apiFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+): Promise<Response> {
+  const respuesta = await fetch(input, {
+    credentials: 'same-origin',
+    ...init,
+  })
+
+  if (respuesta.status === 401) {
+    window.dispatchEvent(new Event('agrocebada:unauthorized'))
+  }
+
+  return respuesta
+}
+
 export type Parcela = {
   id_poligono: string
   estado: string
@@ -16,14 +33,14 @@ export type Parcela = {
 }
 
 export async function obtenerParcelas(): Promise<Parcela[]> {
-  const respuesta = await fetch('/api/parcelas/')
+  const respuesta = await apiFetch('/api/parcelas/')
   if (!respuesta.ok) throw new Error(`Error HTTP ${respuesta.status}`)
   const datos: { total: number; parcelas: Parcela[] } = await respuesta.json()
   return datos.parcelas
 }
 
 export async function obtenerParcela(id: string): Promise<Parcela | null> {
-  const respuesta = await fetch(`/api/parcelas/${encodeURIComponent(id)}/`)
+  const respuesta = await apiFetch(`/api/parcelas/${encodeURIComponent(id)}/`)
   if (respuesta.status === 404) return null
   if (!respuesta.ok) throw new Error(`Error HTTP ${respuesta.status}`)
   return respuesta.json()

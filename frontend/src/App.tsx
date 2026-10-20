@@ -1,21 +1,93 @@
-import { NavLink, useLocation } from 'react-router-dom'
+
+import { useEffect, useState } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import AppRoutes from './AppRoutes'
 import Chatbot from './Chatbot'
 import './App.css'
 
 const navigation = [
-  { label: 'Dashboard', icon: '▦', path: '/', active: false },
-  { label: 'Mapa de parcelas', icon: '⌖', path: '/mapa', active: false },
-  { label: 'Parcelas', icon: '▤', path: '/parcelas', active: false },
-  { label: 'Análisis del modelo', icon: '⌁', path: '/analisis', active: false },
+  { label: 'Dashboard', icon: '▦', path: '/' },
+  { label: 'Mapa de parcelas', icon: '⌖', path: '/mapa' },
+  { label: 'Parcelas', icon: '▤', path: '/parcelas' },
+  { label: 'Análisis del modelo', icon: '⌁', path: '/analisis' },
 ]
-
 
 function App() {
   const location = useLocation()
-  // NUEVO (Jonathan, 2026-10-18): la ruta de arriba mostraba siempre "Dashboard".
-  const ruta = location.pathname.startsWith('/prediccion') ? '/parcelas' : location.pathname
-  const seccion = [...navigation].reverse().find((item) => ruta.startsWith(item.path))?.label ?? 'Dashboard'
+  const navigate = useNavigate()
+  const [autenticado, setAutenticado] = useState(false)
+  const [cerrandoSesion, setCerrandoSesion] = useState(false)
+
+  // Consultar si existe una sesión de administrador.
+  // Si no existe, la aplicación pública sigue funcionando.
+  useEffect(() => {
+    fetch('/api/auth/me/', { credentials: 'same-origin' })
+      .then((respuesta) => {
+        if (!respuesta.ok) return null
+        return respuesta.json()
+      })
+      .then((datos) => {
+        setAutenticado(datos?.autenticado === true)
+      })
+      .catch(() => {
+        setAutenticado(false)
+      })
+  }, [])
+
+  async function cerrarSesion() {
+    setCerrandoSesion(true)
+
+    try {
+      const csrfRespuesta = await fetch('/api/csrf/', {
+        credentials: 'same-origin',
+      })
+
+      const csrfDatos = csrfRespuesta.ok
+        ? await csrfRespuesta.json()
+        : null
+
+      const respuesta = await fetch('/api/auth/logout/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrfDatos?.csrfToken
+            ? { 'X-CSRFToken': csrfDatos.csrfToken }
+            : {}),
+        },
+        body: JSON.stringify({}),
+      })
+
+      if (!respuesta.ok) {
+        throw new Error('No se pudo cerrar la sesión.')
+      }
+
+      setAutenticado(false)
+      navigate('/', { replace: true })
+    } catch {
+      window.alert('No se pudo cerrar la sesión. Inténtalo de nuevo.')
+    } finally {
+      setCerrandoSesion(false)
+    }
+  }
+
+  // Login y registro son páginas opcionales, no requisitos para entrar.
+  if (location.pathname === '/login' || location.pathname === '/registro') {
+    return <AppRoutes />
+  }
+
+  const ruta = location.pathname.startsWith('/prediccion')
+    ? '/parcelas'
+    : location.pathname
+
+  const seccion =
+    [...navigation]
+      .reverse()
+      .find((item) =>
+        item.path === '/'
+          ? ruta === '/'
+          : ruta.startsWith(item.path),
+      )?.label ?? 'Dashboard'
 
   return (
     <div className="app-shell">
@@ -58,22 +130,37 @@ function App() {
 
       <main className="main-content">
         <header className="topbar">
-          <span className="breadcrumb">AgroCebada <span>/</span> {seccion}</span>
+          <span className="breadcrumb">
+            AgroCebada <span>/</span> {seccion}
+          </span>
+
           <div className="user-profile">
             <div className="user-avatar">SD</div>
             <div>
-              <strong>SocieData</strong>
-              <span>Equipo de análisis</span>
+              <strong>
+                {autenticado ? 'Administrador' : 'SocieData'}
+              </strong>
+              <span>
+                {autenticado ? 'Sesión iniciada' : 'Consulta pública'}
+              </span>
             </div>
+            
+            {autenticado && (
+              <button
+                type="button"
+                onClick={cerrarSesion}
+                disabled={cerrandoSesion}
+              >
+                {cerrandoSesion ? 'Cerrando...' : 'Cerrar sesión'}
+              </button>
+            )}
+
           </div>
         </header>
 
-        {/* MODIFICADO (Jonathan, 2026-10-18): antes aquí había un if/else por ruta y el Dashboard completo
-            con datos de prueba. Ahora cada página está en pages/ y las rutas en AppRoutes.tsx
-            (así useParams recibe el id de la parcela y existe la página /analisis). */}
         <AppRoutes />
       </main>
-      
+
       <Chatbot />
     </div>
   )

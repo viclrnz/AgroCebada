@@ -16,7 +16,7 @@ export const MODELO_VIGENTE = 'svr_12vars'
 export const PARCELAS_EVALUADAS = 138
 
 export const METRICAS: MetricasModelo[] = [
-  { modelo: 'svr_12vars', nombre: 'SVR', variables: 12, rmse: 0.531, mae: 0.386, r2: 0.607 },
+  { modelo: 'svr_12vars', nombre: 'SVR', variables: 12, rmse: 0.4859, mae: 0.374, r2: 0.672 },
   { modelo: 'rf_12vars', nombre: 'Random Forest', variables: 12, rmse: 0.558, mae: 0.431, r2: 0.567 },
   { modelo: 'rf_50vars', nombre: 'Random Forest', variables: 50, rmse: 0.58, mae: 0.452, r2: 0.533 },
 ]

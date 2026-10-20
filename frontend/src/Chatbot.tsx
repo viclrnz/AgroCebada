@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react'
 import './Chatbot.css'
+import { apiFetch } from './api'
 
 // NUEVO (Jonathan, 2026-10-18): Django rechaza (403) cualquier POST sin token CSRF.
 // GET /api/csrf/ deja la cookie 'csrftoken' y aquí se lee para mandarla en el encabezado X-CSRFToken.
@@ -79,7 +80,7 @@ export default function Chatbot() {
     setCargando(true)
 
     try {
-      const respuesta = await fetch('/api/chatbot/', {
+      const respuesta = await apiFetch('/api/chatbot/', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': leerCookie('csrftoken') },
