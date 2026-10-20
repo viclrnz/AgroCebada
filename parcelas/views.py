@@ -3,7 +3,6 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 
-from AgroCebada_project.seguridad import login_requerido  # NUEVO (login)
 from .models import ParcelaApp
 
 CAMPOS = ['id_poligono', 'estado', 'municipio', 'conjunto', 'superficie_ha', 'latitud', 'longitud',
@@ -18,7 +17,6 @@ def _a_dict(parcela):
 
 
 @require_GET
-@login_requerido  # NUEVO (login): sin sesión responde 401. Si los datos deben ser públicos, quita esta línea.
 def lista_parcelas(request):
     """GET /api/parcelas/  Filtros opcionales: ?estado=Hidalgo  ?origen=modelo|observado"""
     parcelas = ParcelaApp.objects.order_by('id_poligono')
@@ -31,7 +29,6 @@ def lista_parcelas(request):
 
 
 @require_GET
-@login_requerido  # NUEVO (login)
 def detalle_parcela(request, id_poligono):
     """GET /api/parcelas/AGC_003/"""
     try:
