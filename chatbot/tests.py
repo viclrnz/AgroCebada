@@ -23,13 +23,23 @@ class ChatEndpointTests(TestCase):
 
     def setUp(self):
         cache.clear()  # el contador del límite vive en la caché; cada prueba empieza en cero
-        # NUEVO (login): el chat exige sesión iniciada.
         self.usuario = User.objects.create_user('ana', 'ana@ejemplo.com', 'una-contrasena-larga')
         self.client.force_login(self.usuario)
 
-    def test_sin_login_responde_401(self, _mock):
+    # CORREGIDO: el chat ya no exige login; sin sesión cada navegador solo ve sus propias conversaciones.
+    def test_sin_login_funciona(self, _mock):
         self.client.logout()
-        self.assertEqual(_post(self.client, {'texto': 'hola'}).status_code, 401)
+        r1 = _post(self.client, {'texto': 'hola'})
+        self.assertEqual(r1.status_code, 200)
+        r2 = _post(self.client, {'texto': 'otra', 'sesion_id': r1.json()['sesion_id']})
+        self.assertEqual(r1.json()['sesion_id'], r2.json()['sesion_id'])
+
+    def test_sin_login_no_abre_conversacion_ajena(self, _mock):
+        ajena = ChatSession.objects.create()  # de otro visitante anónimo
+        self.client.logout()
+        self.assertEqual(_post(self.client, {'sesion_id': ajena.id, 'accion': 'undo'}).status_code, 404)
+        r = _post(self.client, {'texto': 'hola', 'sesion_id': ajena.id})
+        self.assertNotEqual(r.json()['sesion_id'], str(ajena.id))
 
     def test_solo_post(self, _mock):
         self.assertEqual(self.client.get('/api/chatbot/', secure=True).status_code, 405)
