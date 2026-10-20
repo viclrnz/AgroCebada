@@ -58,7 +58,7 @@ function Dashboard() {
             <span className="kpi-label">Rendimiento promedio</span>
             <span className="kpi-icon sage">↗</span>
           </div>
-          <div className="kpi-value">{cargando ? '—' : rendimientoPromedio.toFixed(2)} <small>t/ha</small></div>
+          <div className="kpi-value">{cargando ? '—' : rendimientoPromedio.toFixed(3)} <small>t/ha</small></div>
           <div className="kpi-foot">Promedio de las {parcelas.length} parcelas</div>
         </article>
 
@@ -98,15 +98,15 @@ function Dashboard() {
           <div className="metric-list">
             <div className="metric-row">
               <div><strong>RMSE</strong><span>Error cuadrático medio</span></div>
-              <b>{vigente.rmse.toFixed(2)} t/ha</b>
+              <b>{vigente.rmse.toFixed(3)} t/ha</b>
             </div>
             <div className="metric-row">
               <div><strong>MAE</strong><span>Error absoluto medio</span></div>
-              <b>{vigente.mae.toFixed(2)} t/ha</b>
+              <b>{vigente.mae.toFixed(3)} t/ha</b>
             </div>
             <div className="metric-row">
               <div><strong>R²</strong><span>Coeficiente de determinación</span></div>
-              <b>{vigente.r2.toFixed(2)}</b>
+              <b>{vigente.r2.toFixed(3)}</b>
             </div>
           </div>
           <div className="model-footer">
