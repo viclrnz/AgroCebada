@@ -5,9 +5,11 @@ import '../App.css'
 import { etiquetaOrigen, promedio, useParcelas } from '../api'
 import MapaRendimiento, { LeyendaMapa } from '../components/MapaRendimiento'
 import { METRICAS, MODELO_VIGENTE, nombreModelo } from '../metricas'
+import { useSesion } from '../SesionContext'
 
 function Dashboard() {
   const navigate = useNavigate()
+  const sesion = useSesion()
   const { parcelas, cargando, error } = useParcelas()
   const vigente = METRICAS.find((m) => m.modelo === MODELO_VIGENTE)!
   const rendimientoPromedio = promedio(parcelas.map((p) => p.rendimiento_estimado_t_ha))
@@ -27,13 +29,15 @@ function Dashboard() {
             Vista general
           </div>
 
-          <button
-            type="button"
-            className="login-access-button"
-            onClick={() => navigate('/login')}
-          >
-            Iniciar sesión
-          </button>
+          {!sesion.cargando && !sesion.autenticado && (
+            <button
+              type="button"
+              className="login-access-button"
+              onClick={() => navigate('/login')}
+            >
+              Iniciar sesión
+            </button>
+          )}
         </div>
       </section>
 
