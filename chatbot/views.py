@@ -1,16 +1,16 @@
 import json
 import logging
+
+from django.conf import settings
 from django.http import JsonResponse
-from django.shortcuts import render  # se conserva: chatbot/urls.py usa chat_interface
+from django.shortcuts import render
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from openai import APIError
 from .services import procesar_mensaje
 from .models import ChatSession
-
-# FUSIONADO: se eliminaron los imports duplicados que dejó el conflicto (ensure_csrf_cookie y ChatSession
-# aparecían en ambas ramas).
+from AgroCebada_project.seguridad import limite_superado, login_requerido  # NUEVO: compartido con el login
 
 logger = logging.getLogger(__name__)  # para ver los errores reales en consola
 
@@ -19,16 +19,25 @@ ACCIONES_VALIDAS = ('chat', 'undo', 'reroll')
 
 
 def chat_interface(request):
-    # Carga la interfaz HTML de pruebas del chat (chatbot/urls.py la sigue usando).
+    # Interfaz HTML de pruebas del chat. CORREGIDO: chatbot/urls.py solo la monta con DEBUG=True.
     return render(request, 'chatbot/chat.html')
 
 
-def chat_endpoint(request):
-    # 1. Bloquear peticiones que no sean POST (de las dos ramas: ya devolvía 405 y Jonathan evitó el 500 por None)
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Método no permitido. Usa POST.'}, status=405)
+# NUEVO (login): la conversación se busca entre las del usuario que inició sesión. Antes (versión sin login) los
+# IDs propios se guardaban en la sesión de Django; ahora el dueño queda en la base de datos (ChatSession.usuario),
+# así que sirve desde cualquier navegador y nadie puede abrir una conversación ajena aunque adivine el número.
+def _sesion_propia(request, sesion_id):
+    try:
+        sesion_id = int(sesion_id)
+    except (TypeError, ValueError):
+        return None
+    return ChatSession.objects.filter(id=sesion_id, usuario=request.user).first()
 
-    # 2. El JSON se decodifica aparte para responder 400 solo por errores del cliente
+
+@require_POST  # CORREGIDO: reemplaza el "if request.method != 'POST'" manual; devuelve 405 igual
+@login_requerido  # NUEVO (login): sin sesión iniciada responde 401; protege el crédito de la IA
+def chat_endpoint(request):
+    # 1. El JSON se decodifica aparte para responder 400 solo por errores del cliente
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -38,10 +47,7 @@ def chat_endpoint(request):
     if not isinstance(data, dict):
         return JsonResponse({'error': 'El cuerpo debe ser un objeto JSON.'}, status=400)
 
-    # FUSIONADO (aporte de Jonathan): se aceptan los DOS formatos de campos.
-    #   React:        'texto' e 'idioma'
-    #   chat.html:    'mensaje' y 'language'
-    # Se mantiene la validación de tipo y el recorte de longitud de nuestra versión.
+    # Se aceptan los dos formatos de campos: React ('texto', 'idioma') y chat.html ('mensaje', 'language').
     texto_usuario = data.get('texto')
     if texto_usuario is None:
         texto_usuario = data.get('mensaje', '')
@@ -53,7 +59,6 @@ def chat_endpoint(request):
     if idioma not in ('es', 'en'):
         idioma = 'es'
 
-    # Se soportan las acciones undo y reroll
     accion = data.get('accion', 'chat')
     if accion not in ACCIONES_VALIDAS:
         accion = 'chat'
@@ -62,18 +67,22 @@ def chat_endpoint(request):
     if accion == 'chat' and not texto_usuario:
         return JsonResponse({'error': 'El mensaje está vacío.'}, status=400)
 
-    # 3. Sesión: se busca la existente; si no existe o el ID no es válido, se crea una nueva
-    # (ya no se usa get_or_create con un ID inventado por el cliente).
-    # Cuando exista login, vincula la sesión al usuario y comprueba aquí que le pertenece.
-    sesion = None
-    sesion_id = data.get('sesion_id')
-    if sesion_id:
-        try:
-            sesion = ChatSession.objects.filter(id=int(sesion_id)).first()
-        except (TypeError, ValueError):
-            sesion = None  # ID con formato inválido: se ignora en lugar de provocar un 500
+    # CORREGIDO: 'chat' y 'reroll' llaman a la IA (cuestan dinero), así que cuentan para el límite. 'undo' no.
+    if accion != 'undo' and limite_superado(request, 'chat', settings.CHATBOT_LIMITE_MENSAJES,
+                                            settings.CHATBOT_LIMITE_VENTANA_S):
+        return JsonResponse(
+            {'error': 'Enviaste demasiados mensajes. Espera unos minutos e intenta de nuevo.'},
+            status=429,
+        )
+
+    # 3. Sesión: solo se reutiliza si es de este usuario; si no, se crea una nueva.
+    # CORREGIDO: antes se buscaba con ChatSession.objects.filter(id=...) sin comprobar el dueño.
+    sesion = _sesion_propia(request, data.get('sesion_id'))
     if sesion is None:
-        sesion = ChatSession.objects.create(idioma=idioma)
+        if accion != 'chat':
+            # CORREGIDO: 'undo' o 'reroll' sobre una sesión ajena o inexistente no tienen nada que hacer.
+            return JsonResponse({'error': 'La conversación no existe.'}, status=404)
+        sesion = ChatSession.objects.create(usuario=request.user, idioma=idioma)  # NUEVO (login): con dueño
 
     # 4. Procesar la respuesta con services.py
     try:
@@ -91,9 +100,7 @@ def chat_endpoint(request):
         logger.exception("Error inesperado en chat_endpoint")
         return JsonResponse({'error': 'Ocurrió un error interno en el servidor.'}, status=500)
 
-    # FUSIONADO (aporte de Jonathan): se devuelve sesion_id para que React lo guarde y lo reenvíe;
-    # sin él, cada mensaje abriría una sesión nueva y el bot no recordaría la conversación.
-    # Se devuelve como texto (str), igual que en nuestra versión.
+    # Se devuelve sesion_id para que React lo guarde y lo reenvíe (sin él, cada mensaje abriría una sesión nueva).
     return JsonResponse({
         'status': 'success',
         'respuesta': respuesta_ia,
@@ -104,13 +111,8 @@ def chat_endpoint(request):
 @ensure_csrf_cookie
 @require_GET
 def get_csrf_token(request):
-    # ensure_csrf_cookie garantiza que Django envíe la cookie 'csrftoken'.
-    # FUSIONADO: la versión de Jonathan devolvía solo {'status': 'ok'} (el front leía la cookie);
-    # la nuestra devolvía el token en el JSON. Esta respuesta incluye ambos campos, así que
-    # funciona con cualquiera de los dos frontends.
+    # ensure_csrf_cookie garantiza que Django envíe la cookie 'csrftoken'. Se devuelve también en el JSON para que
+    # funcione tanto si el front lee la cookie como si lee la respuesta.
     return JsonResponse({'status': 'ok', 'csrfToken': get_token(request)})
 
-
-# FUSIONADO: alias para que la ruta de Jonathan (views.csrf) siga funcionando sin cambios.
-# Cuando el equipo decida un solo nombre, borra el que no se use.
-csrf = get_csrf_token
+# CORREGIDO: se eliminó el alias "csrf = get_csrf_token"; ahora las dos rutas usan get_csrf_token directamente.

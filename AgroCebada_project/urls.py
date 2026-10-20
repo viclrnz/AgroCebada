@@ -3,31 +3,29 @@ URL configuration for AgroCebada_project project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/6.1/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import os
+
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include  # CORREGIDO: este import estaba repetido dos veces
 
-from django.urls import path, include 
-from chatbot import views as chatbot_views  # NUEVO (Jonathan, 2026-10-18): para la ruta del widget de React
+from chatbot import views as chatbot_views
+from AgroCebada_project import auth_views  # NUEVO (Ren): registro, login y logout
 
-# MODIFICADO (Jonathan, 2026-10-18): había dos 'urlpatterns =' y el segundo borraba al primero,
-# así que las rutas del bot nunca se registraban. Ahora es una sola lista.
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('bot/', include('chatbot.urls')), # <-- rutas del bot
-    # NUEVO (Jonathan, 2026-10-18): ruta que usa el widget de React (frontend/src/Chatbot.tsx hace fetch a /api/chatbot/).
-    path('api/chatbot/', chatbot_views.chat_endpoint, name='chat_endpoint_react'),
-    path('api/csrf/', chatbot_views.csrf, name='csrf'),  # NUEVO (Jonathan, 2026-10-18): cookie CSRF para React
-    # NUEVO (Jonathan, 2026-10-18): API de parcelas para el Front (listado y detalle).
+    # CORREGIDO: la ruta del admin sale del .env (DJANGO_ADMIN_URL). '/admin/' es lo primero que prueban los bots
+    # que buscan contraseñas débiles; con otra ruta reciben un 404.
+    path(os.getenv('DJANGO_ADMIN_URL', 'admin/'), admin.site.urls),
+    path('bot/', include('chatbot.urls')),  # página de pruebas del chat (solo existe con DEBUG=True)
+    # Rutas que usa React (frontend/src/Chatbot.tsx y frontend/src/api.ts).
+    # CORREGIDO: el nombre pasa de 'chat_endpoint_react' a 'chat_endpoint' porque chat.html lo busca así
+    # ({% url "chat_endpoint" %}) y antes lo encontraba en la ruta duplicada /bot/api/chat/, que se eliminó.
+    path('api/chatbot/', chatbot_views.chat_endpoint, name='chat_endpoint'),
+    path('api/csrf/', chatbot_views.get_csrf_token, name='csrf'),  # CORREGIDO: antes usaba el alias views.csrf
     path('api/parcelas/', include('parcelas.urls')),
+    # NUEVO (Ren): autenticación de usuarios con las cuentas de Django (auth_user).
+    path('api/auth/register/', auth_views.registrar_usuario, name='registro_api'),
+    path('api/auth/login/', auth_views.iniciar_sesion, name='login_api'),
+    path('api/auth/me/', auth_views.sesion_actual, name='sesion_actual_api'),
+    path('api/auth/logout/', auth_views.cerrar_sesion, name='logout_api'),
 ]

@@ -21,9 +21,19 @@ function Dashboard() {
           <h1>Dashboard</h1>
           <p>Resumen del rendimiento de las parcelas de cebada.</p>
         </div>
-        <div className="date-chip">
-          <span className="date-icon">◷</span>
-          Vista general
+        <div className="heading-actions">
+          <div className="date-chip">
+            <span className="date-icon">◷</span>
+            Vista general
+          </div>
+
+          <button
+            type="button"
+            className="login-access-button"
+            onClick={() => navigate('/login')}
+          >
+            Iniciar sesión
+          </button>
         </div>
       </section>
 

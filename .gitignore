@@ -224,3 +224,5 @@ source/
 venv/
 __pycache__
 *.sqlite3
+# Entorno virtual con otro nombre (no se sube a git)
+source/

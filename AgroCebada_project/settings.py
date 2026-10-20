@@ -11,31 +11,35 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
-from dotenv import load_dotenv
-
-# Carga las variables del archivo .env
-load_dotenv()
-
+import sys
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured  # CORREGIDO: para fallar con un mensaje claro si falta una variable
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Carga las variables del archivo .env
+load_dotenv(BASE_DIR / '.env')  # CORREGIDO: ruta explícita; antes dependía de la carpeta desde donde se corría el comando
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-8n7u@%83dldb83f_iarut7#w)0-#swa83t7c9_skydi0)-ab0#'
+# CORREGIDO: función auxiliar para leer listas separadas por comas del .env sin dejar espacios ni elementos vacíos.
+def _lista_env(nombre, por_defecto=''):
+    return [v.strip() for v in os.getenv(nombre, por_defecto).split(',') if v.strip()]
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = []
+# CORREGIDO: la llave y DEBUG estaban escritos en el código y el .env no se leía.
+# Si falta DJANGO_SECRET_KEY el servidor no arranca (mejor que arrancar con una llave conocida por todos).
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured('Falta DJANGO_SECRET_KEY en el archivo .env')
 
-# NUEVO (Jonathan, 2026-10-18): el front de React (Vite, puerto 5173) manda los POST del chatbot a Django
-# a través del proxy; Django revisa de dónde vienen y sin esto responde 403. Se puede cambiar en el .env.
-CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
+# CORREGIDO: DEBUG viene del .env y por defecto está APAGADO. Solo vale True si el .env dice exactamente True.
+DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
+
+# CORREGIDO: antes era una lista vacía fija. Ahora sale del .env (dominios del backend, sin http://).
+ALLOWED_HOSTS = _lista_env('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1')
 
 
 # Application definition
@@ -47,14 +51,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'corsheaders', #agregado(para request, no se rompa en el caso de cors-headers )
-    'parcelas', #agregado
-    'chatbot', #agregado
+    'corsheaders',
+    'parcelas',
+    'chatbot',
+    'cuentas',  # NUEVO: panel de usuarios con niveles Superusuario / Administrador
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware', # <- ¡NUEVO! para el cors-headers
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # CORREGIDO: sirve los estáticos (CSS del admin) cuando DEBUG=False
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -88,30 +94,37 @@ WSGI_APPLICATION = 'AgroCebada_project.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': os.getenv('DB_ENGINE'),
+        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
         'NAME': os.getenv('DB_NAME'),
         'USER': os.getenv('DB_USER'),
         'PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
-        'OPTIONS': {
-            'sslmode': os.getenv('DB_SSLMODE', 'require'),
-        },
+        'PORT': os.getenv('DB_PORT', '5432'),
+        'OPTIONS': {},
     }
 }
+# CORREGIDO: 'sslmode' solo existe en PostgreSQL. Antes se ponía siempre y SQLite (pruebas locales) fallaba con
+# "unexpected keyword argument 'sslmode'".
+if 'postgresql' in DATABASES['default']['ENGINE']:
+    DATABASES['default']['OPTIONS']['sslmode'] = os.getenv('DB_SSLMODE', 'require')
 
-# NUEVO (Jonathan, 2026-10-18): conexión de SOLO LECTURA para el chatbot con el rol 'chatbot_lector'
-# (sql/007_rol_chatbot.sql del repo AgroCebada_Datos). Ese rol solo puede leer
-# rendimientos_estimados, v_parcelas_app y matriz_caracteristicas; no ve auth_user
-# (contraseñas) ni puede escribir, aunque el filtro de services.py fallara.
-# Se activa solo si CHATBOT_DB_USER está en el .env; si no, todo sigue igual que antes.
+# Conexión de SOLO LECTURA para el chatbot con el rol 'chatbot_lector' (sql/007_rol_chatbot.sql de AgroCebada_Datos).
+# Ese rol solo puede leer rendimientos_estimados, v_parcelas_app y matriz_caracteristicas.
 # Con el pooler de Supabase el usuario lleva el id del proyecto: chatbot_lector.<id_proyecto>
+# CORREGIDO: el .env.example decía DB_RO_USER pero aquí se lee CHATBOT_DB_USER. Ahora los tres archivos
+# (.env.example, README y settings) usan CHATBOT_DB_USER / CHATBOT_DB_PASSWORD.
 if os.getenv('CHATBOT_DB_USER'):
     DATABASES['readonly'] = {
         **DATABASES['default'],
         'USER': os.getenv('CHATBOT_DB_USER'),
         'PASSWORD': os.getenv('CHATBOT_DB_PASSWORD'),
     }
+
+
+# NUEVO: "python manage.py test" SIEMPRE usa una base temporal en memoria (SQLite), nunca Supabase.
+# Sin esto, si se olvidaban las variables de prueba, Django creaba una base "test_postgres" en el servidor de Supabase.
+if len(sys.argv) > 1 and sys.argv[1] == 'test':
+    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': ':memory:'}}
 
 
 # Password validation
@@ -136,9 +149,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-mx'  # CORREGIDO: antes 'en-us'; el admin y los mensajes de validación salen en español
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Mexico_City'  # CORREGIDO: antes 'UTC'; las fechas se muestran en hora de México (se guardan en UTC igual)
 
 USE_I18N = True
 
@@ -149,28 +162,60 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # CORREGIDO: carpeta donde 'collectstatic' junta los estáticos para producción
 
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+# CORREGIDO: el backend de consola solo sirve en desarrollo ("check --deploy" lo marca como error).
+# En producción se usa SMTP; cuando se envíen correos (p. ej. recuperar contraseña) hay que configurar el servidor.
 MAILERS = {
     'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+        'BACKEND': ('django.core.mail.backends.console.EmailBackend' if DEBUG
+                    else 'django.core.mail.backends.smtp.EmailBackend'),
     },
 }
 
 # --- CORS Y CSRF PARA REACT ---
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOWED_ORIGINS = [
-    o.strip()
-    for o in os.getenv(
-        'CORS_ALLOWED_ORIGINS',
-        'http://localhost:5173,http://localhost:3000'
-    ).split(',')
-    if o.strip()
-]
+# Dirección del FRONTEND con http/https y puerto.
+CORS_ALLOWED_ORIGINS = _lista_env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173')
 
-# Debe incluir los mismos orígenes (con esquema http/https) para que Django acepte el token CSRF
-CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+# CORREGIDO: antes se definía dos veces (línea 38 y al final) y la segunda pisaba a la primera, así que la variable
+# CSRF_TRUSTED_ORIGINS del .env nunca se usaba. Ahora se define una vez: si el .env no la trae, usa los orígenes de CORS.
+CSRF_TRUSTED_ORIGINS = _lista_env('CSRF_TRUSTED_ORIGINS') or CORS_ALLOWED_ORIGINS
+
+
+# CORREGIDO: medidas de seguridad para producción que pedía "check --deploy". Solo se activan con DEBUG=False
+# para no estorbar en local (runserver no tiene HTTPS).
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True                 # todo http:// se redirige a https://
+    SESSION_COOKIE_SECURE = True               # la cookie de sesión solo viaja por HTTPS
+    CSRF_COOKIE_SECURE = True                  # igual para la cookie CSRF
+    SECURE_HSTS_SECONDS = int(os.getenv('DJANGO_HSTS_SECONDS', '3600'))  # el navegador recuerda usar HTTPS; subir a 31536000 cuando todo funcione
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # El hosting (Render, Railway, etc.) suele poner un proxy delante que habla HTTPS con el usuario y HTTP con Django.
+    # Esta cabecera le dice a Django que la petición original sí era HTTPS (evita redirecciones infinitas).
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+
+# CORREGIDO: no había configuración de logs. Los errores van a la consola (el hosting los guarda);
+# el detalle de las herramientas del chatbot solo se ve si CHATBOT_LOG_LEVEL=DEBUG.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'root': {'handlers': ['console'], 'level': 'INFO'},
+    'loggers': {
+        'chatbot': {'handlers': ['console'], 'level': os.getenv('CHATBOT_LOG_LEVEL', 'INFO'), 'propagate': False},
+    },
+}
+
+
+# CORREGIDO: límite de mensajes al chatbot (protege el crédito de la IA). Se cuenta por IP en la caché de Django.
+# Nota: la caché por defecto vive en la memoria de cada proceso; con varios workers de gunicorn cada uno cuenta aparte.
+# Cuando haya Redis o se quiera exactitud, cambiar CACHES a Redis o a la base de datos.
+CHATBOT_LIMITE_MENSAJES = int(os.getenv('CHATBOT_LIMITE_MENSAJES', '20'))
+CHATBOT_LIMITE_VENTANA_S = int(os.getenv('CHATBOT_LIMITE_VENTANA_S', '600'))

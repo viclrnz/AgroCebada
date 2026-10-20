@@ -4,13 +4,12 @@ import json
 import uuid  # NUEVO: genera IDs de llamadas a herramientas cuando el modelo las escribe como XML
 import logging  # NUEVO (v2): para registrar qué herramienta se ejecutó y qué resultado vio el modelo
 from openai import OpenAI
+from django.conf import settings  # CORREGIDO: para saber si estamos en DEBUG y qué conexiones existen
 from django.db import connections, transaction  # MODIFICADO: se agrega transaction para usar transacciones READ ONLY seguras
-from dotenv import load_dotenv
 from .models import Mensaje
 
 # ELIMINADO: "from parcelas.models import ParcelaApp" -> no se usaba en ningún lado del archivo.
-
-load_dotenv()
+# CORREGIDO: se quitó "load_dotenv()". settings.py ya carga el .env antes de que se importe este archivo.
 
 # NUEVO (v2): logger del módulo. Sirve para diagnosticar si un dato erróneo viene de la base de datos
 # (el log muestra una cifra incorrecta) o del modelo (el log muestra la cifra correcta y el bot responde otra).
@@ -24,7 +23,9 @@ logger = logging.getLogger(__name__)
 MODELO = os.getenv("CHATBOT_MODEL", "zai-org/GLM-4.7-Flash")
 # NUEVO (Jonathan, 2026-10-18): dirección del proveedor de IA configurable (sirve para pruebas locales).
 URL_API_IA = os.getenv("CHATBOT_API_URL", "https://api.meganova.ai/v1")
-ALIAS_DB_LECTURA = os.getenv("CHATBOT_DB_ALIAS", "default")  # idealmente un alias "readonly" con rol de solo lectura
+# CORREGIDO: el valor por defecto pasa de "default" a "readonly". Con "default" la IA consultaba con el usuario
+# principal de Supabase, que puede leer auth_user (contraseñas) y chatbot_mensaje (todas las conversaciones).
+ALIAS_DB_LECTURA = os.getenv("CHATBOT_DB_ALIAS", "readonly")
 MAX_PASOS = 8                # NUEVO: máximo de rondas de herramientas (explorar -> consultar -> responder), evita bucles infinitos
                              # MODIFICADO (v3): 6 -> 8 para dar margen a un reintento tras un error de SQL
 MAX_FILAS = 100              # NUEVO: límite de filas por consulta, protege memoria y tokens
@@ -125,8 +126,37 @@ PROHIBIDAS = re.compile(
     re.IGNORECASE,
 )
 
+# CORREGIDO: la lista anterior frena escrituras, pero no LECTURAS de tablas internas. Esta segunda lista bloquea
+# tablas de Django y del chat, el catálogo de PostgreSQL y las funciones que permiten armar SQL "por dentro"
+# (query_to_xml('select ... from au' || 'th_user')) o leer configuración/archivos del servidor.
+# Es solo una segunda capa: la protección real es el rol chatbot_lector, que no tiene permiso sobre esas tablas.
+TABLAS_INTERNAS = re.compile(
+    r'\b(auth_\w*|django_\w*|chatbot_\w*|etl_\w*|pg_\w*|information_schema'
+    r'|\w*_to_xml\w*|query_to_\w+|dblink\w*|current_setting|set_config|lo_\w+)\b',
+    re.IGNORECASE,
+)
 
-def ejecutar_sql_lectura(query, params=None):
+
+# CORREGIDO: decide si se puede usar la conexión configurada para el chatbot ("fallar cerrado").
+# Antes, si faltaba el rol de solo lectura, se usaba sin avisar la conexión con todos los permisos.
+# Ahora en producción SOLO se acepta "readonly"; "default" queda permitido únicamente con DEBUG=True (pruebas locales).
+def _conexion_lectura_valida():
+    if ALIAS_DB_LECTURA not in settings.DATABASES:
+        logger.error("El chatbot usa CHATBOT_DB_ALIAS=%s pero esa conexión no existe (falta CHATBOT_DB_USER en el .env)",
+                     ALIAS_DB_LECTURA)
+        return False
+    if ALIAS_DB_LECTURA != "readonly" and not settings.DEBUG:
+        logger.error("El chatbot solo puede usar la conexión 'readonly' en producción (CHATBOT_DB_ALIAS=%s)",
+                     ALIAS_DB_LECTURA)
+        return False
+    return True
+
+
+# CORREGIDO: nuevo parámetro 'interna'. Las consultas fijas escritas por nosotros (explorar_estructura_db usa
+# information_schema) se saltan el filtro de tablas internas; el SQL que escribe la IA siempre pasa por él.
+def ejecutar_sql_lectura(query, params=None, interna=False):
+    if not _conexion_lectura_valida():  # CORREGIDO: sin conexión de solo lectura no se ejecuta nada
+        return "Error: la base de datos no está disponible para el asistente."
     query_limpio = (query or "").strip().rstrip(';')  # MODIFICADO: tolera query=None sin lanzar excepción
 
     # 1. Prohibir múltiples sentencias y palabras clave de escritura
@@ -137,6 +167,8 @@ def ejecutar_sql_lectura(query, params=None):
         return "Error de seguridad: Solo se permiten consultas SELECT."
     if PROHIBIDAS.search(query_limpio):
         return "Error de seguridad: Operación de escritura detectada y bloqueada."
+    if not interna and TABLAS_INTERNAS.search(query_limpio):  # CORREGIDO: bloquea lectura de tablas internas
+        return "Error de seguridad: Solo puedes consultar rendimientos_estimados, v_parcelas_app y matriz_caracteristicas."
 
     try:
         # MODIFICADO: antes se usaba "SET SESSION CHARACTERISTICS ... READ ONLY" y luego se restauraba a READ WRITE.
@@ -184,7 +216,7 @@ def explorar_estructura_db():
     # veía el esquema real. Ahora solo devuelve las dos tablas del proyecto, y además no expone tablas internas.
     # MODIFICADO (Jonathan, 2026-10-18): se agrega 'rendimientos_estimados' y va primero. Si el tope de caracteres corta algo,
     # que sea la matriz (98 columnas), no las tablas principales.
-    return ejecutar_sql_lectura(query)
+    return ejecutar_sql_lectura(query, interna=True)  # CORREGIDO: consulta fija nuestra, usa information_schema
 
 
 def ejecutar_consulta_select(query_sql):
@@ -209,7 +241,7 @@ def resumen_parcelas():
         GROUP BY ROLLUP (estado, municipio)
         ORDER BY GROUPING(estado), estado, GROUPING(municipio), municipio
     """
-    return ejecutar_sql_lectura(query)
+    return ejecutar_sql_lectura(query, interna=True)  # CORREGIDO: consulta fija nuestra
 
 
 funciones_disponibles = {
@@ -306,9 +338,8 @@ def ejecutar_herramienta(nombre, args):
 # MOTOR PRINCIPAL DE MENSAJERÍA
 # ==========================================
 def procesar_mensaje(sesion, texto_usuario, idioma, accion="chat"):
-    # NUEVO (Jonathan, 2026-10-18): sin llave el cliente de OpenAI lanza una excepción y Django respondía 500.
-    if not os.getenv("SINOX_API_KEY"):
-        return "El asistente aún no está configurado: falta SINOX_API_KEY en el archivo .env."
+    # CORREGIDO: la comprobación de SINOX_API_KEY se movió debajo del bloque 'undo'. Deshacer solo borra mensajes
+    # de la base de datos y no necesita la IA; antes, sin llave, el botón de deshacer no hacía nada.
     if accion == "undo":
         # MODIFICADO (v4): antes borraba siempre los 2 últimos mensajes. Desde que el mensaje de fallo ya no se
         # guarda (v3), un turno fallido deja solo el mensaje del usuario, y "borrar 2" se llevaba además la
@@ -321,8 +352,14 @@ def procesar_mensaje(sesion, texto_usuario, idioma, accion="chat"):
             ultimo.delete()
         return "undo_ok"
 
-    elif accion == "reroll":
-        ultimo_msg = sesion.mensajes.order_by('-creado').first()
+    # NUEVO (Jonathan, 2026-10-18): sin llave el cliente de OpenAI lanza una excepción y Django respondía 500.
+    if not os.getenv("SINOX_API_KEY"):
+        return "El asistente aún no está configurado: falta SINOX_API_KEY en el archivo .env."
+
+    if accion == "reroll":  # CORREGIDO: 'elif' -> 'if' porque ahora hay código entre los dos bloques
+        # CORREGIDO: se agrega '-id' al orden (igual que en 'undo'). Si dos mensajes tienen la misma hora,
+        # solo con '-creado' el resultado es arbitrario y podía borrar el mensaje equivocado.
+        ultimo_msg = sesion.mensajes.order_by('-creado', '-id').first()
         if ultimo_msg and ultimo_msg.role == "assistant":
             ultimo_msg.delete()
     else:
@@ -403,7 +440,9 @@ def procesar_mensaje(sesion, texto_usuario, idioma, accion="chat"):
             resultado = str(ejecutar_herramienta(n, a))  # MODIFICADO (v2): se guarda en variable para poder registrarlo
             # NUEVO (v2): log de diagnóstico. Si aquí aparece 197 y el bot responde 207, el error es del modelo;
             # si aquí aparece 207, el error viene de la base de datos/vista. Quita o baja a logger.info en producción.
-            logger.warning("TOOL %s args=%s -> %s", n, a, resultado[:800])
+            # CORREGIDO: antes era logger.warning y guardaba en los logs de producción cada consulta y sus datos.
+            # Ahora es DEBUG: solo aparece si CHATBOT_LOG_LEVEL=DEBUG en el .env.
+            logger.debug("TOOL %s args=%s -> %s", n, a, resultado[:800])
             historial.append({
                 "role": "tool",
                 "tool_call_id": i,
